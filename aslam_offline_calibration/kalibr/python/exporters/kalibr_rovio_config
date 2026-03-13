@@ -6,10 +6,13 @@ import pylab as pl
 import sm
 import argparse
 import sys
-import rospkg
+from pathlib import Path
 
 from matplotlib.colors import LogNorm
 np.set_printoptions(suppress=True)
+
+# Resolve auxiliary files path (ROS-independent)
+_AUXILIARY_DIR = Path(__file__).resolve().parent / 'auxiliary_files'
 
 
 def list_fill_with(l, min_size, elem):
@@ -115,17 +118,10 @@ if __name__ == "__main__":
 
 
 
-    # get an instance of RosPack with the default search paths
-    rospack = rospkg.RosPack()
-
-    # get the file path
-    kalibr_path = rospack.get_path('kalibr')
-
-    print("Using Kalibr at '{}'".format(kalibr_path))
     #load the camchain.yaml
     camchain = kc.ConfigReader.CameraChainParameters(parsed.chainYaml)
 
-    with open(kalibr_path + '/python/exporters/auxiliary_files/rovio_header.txt', 'r') as file_:
+    with open(_AUXILIARY_DIR / 'rovio_header.txt', 'r') as file_:
         CONFIG = file_.read()
 
     CONFIG+="\n"
@@ -147,7 +143,7 @@ if __name__ == "__main__":
 
         CONFIG += printCameraBlock(camConfig, t_SC, q_CS)
 
-    with open(kalibr_path + '/python/exporters/auxiliary_files/rovio_footer.txt', 'r') as file_:
+    with open(_AUXILIARY_DIR / 'rovio_footer.txt', 'r') as file_:
         CONFIG += file_.read()
 
     with open('rovio_test.info', 'w') as file_:

@@ -11,6 +11,7 @@ from . import IccCalibrator as ic
 from .IccCalibrator import *
 
 import cv2
+import os
 import sys
 import math
 import numpy as np
@@ -19,20 +20,22 @@ import scipy.optimize
 
 
 def initCameraBagDataset(bagfile, topic, from_to, freq, perform_synchronization):
-    print("Initializing camera rosbag dataset reader:")
+    is_folder = os.path.isdir(bagfile)
+    print("Initializing camera dataset reader ({0}):".format("folder" if is_folder else "rosbag"))
     print("\tDataset:          {0}".format(bagfile))
     print("\tTopic:            {0}".format(topic))
-    reader = kc.BagImageDatasetReader(bagfile, topic, bag_from_to=from_to, bag_freq=freq, \
-                                      perform_synchronization=perform_synchronization)
+    reader = kc.create_image_dataset(bagfile, topic, bag_from_to=from_to, bag_freq=freq,
+                                     perform_synchronization=perform_synchronization)
     print("\tNumber of images: {0}".format(len(reader.index)))
     return reader
 
 def initImuBagDataset(bagfile, topic, from_to=None, perform_synchronization=False):
-    print("Initializing imu rosbag dataset reader:")
+    is_folder = os.path.isdir(bagfile)
+    print("Initializing imu dataset reader ({0}):".format("folder" if is_folder else "rosbag"))
     print("\tDataset:          {0}".format(bagfile))
     print("\tTopic:            {0}".format(topic))
-    reader = kc.BagImuDatasetReader(bagfile, topic, bag_from_to=from_to, \
-                                      perform_synchronization=perform_synchronization)
+    reader = kc.create_imu_dataset(bagfile, topic, bag_from_to=from_to,
+                                   perform_synchronization=perform_synchronization)
     print("\tNumber of messages: {0}".format(len(reader.index)))
     return reader
 

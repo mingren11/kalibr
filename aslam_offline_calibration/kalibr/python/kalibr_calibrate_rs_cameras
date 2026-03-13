@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 print("importing libraries")
-import rosbag
-import cv_bridge
-
 import sm
 from sm import PlotCollection
 import aslam_cv as acv
@@ -26,7 +23,7 @@ np.set_printoptions(suppress=True)
 def __initBagDataset(bagfile, topic, from_to, freq):
     print("\tDataset:          {0}".format(bagfile))
     print("\tTopic:            {0}".format(topic))
-    reader = kc.BagImageDatasetReader(bagfile, topic, bag_from_to=from_to, bag_freq=freq)
+    reader = kc.create_image_dataset(bagfile, topic, bag_from_to=from_to, bag_freq=freq)
     print("\tNumber of images: {0}".format(reader.numImages()))
     return reader
 
@@ -88,7 +85,8 @@ def __parseArgs():
 
     groupSource = parser.add_argument_group('Data source')
     groupSource.add_argument('--bag', dest='bagfile', help='The bag file with the data.')
-    groupSource.add_argument('--topic', dest='topic', help='The image topic.', required=True)
+    groupSource.add_argument('--folder', dest='folder', help='Folder dataset (no ROS): dataset/cam0/ with images.csv')
+    groupSource.add_argument('--topic', dest='topic', help='The image topic (or folder name for --folder, e.g. cam0).', required=True)
     groupSource.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the bag data starting from up to this time [s].')
     groupSource.add_argument('--bag-freq', metavar='bag_freq', type=float, help='Frequency to extract features at [hz]')
 
@@ -113,6 +111,13 @@ def __parseArgs():
         parsed = parser.parse_args()
     except:
         sys.exit(2)
+
+    # Require either --bag or --folder
+    if (parsed.bagfile is None) == (parsed.folder is None):
+        sm.logError("Exactly one of --bag or --folder must be specified.")
+        sys.exit(2)
+    if parsed.folder:
+        parsed.bagfile = parsed.folder
 
     # there is an issue with the gtk plot widget, so we cant plot if we have opencv windows open...
     # --> disable the plots in these special situations

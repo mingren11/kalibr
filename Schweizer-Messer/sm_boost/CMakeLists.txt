@@ -22,7 +22,11 @@ add_library(${PROJECT_NAME}
   src/portable_binary_iarchive.cpp
   src/portable_binary_oarchive.cpp
 )
-
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${Boost_INCLUDE_DIRS}
+)
 target_link_libraries(${PROJECT_NAME} 
                       ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 

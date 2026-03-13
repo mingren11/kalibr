@@ -27,6 +27,13 @@ add_library(${PROJECT_NAME}
   src/sparse_helper.cpp
   src/marginal_covariance_cholesky.cpp
 )
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${CHOLMOD_INCLUDE_DIR}
+  ${EIGEN3_INCLUDE_DIRS}
+)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${TBB_LIBRARIES} ${SUITESPARSE_LIBRARIES})
 
 if(CATKIN_ENABLE_TESTING)
   # Avoid clash with tr1::tuple: https://code.google.com/p/googletest/source/browse/trunk/README?r=589#257

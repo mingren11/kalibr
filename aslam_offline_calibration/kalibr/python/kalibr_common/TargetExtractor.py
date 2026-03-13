@@ -20,11 +20,12 @@ def multicoreExtractionWrapper(detector, taskq, resultq, clearImages, noTransfor
         idx = task[0]
         stamp = task[1]
         image = task[2]
-        
+        # Ensure C-contiguous uint8 2D array for numpy_eigen converter
+        img = np.ascontiguousarray(np.array(image, dtype=np.uint8))
         if noTransformation:
-            success, obs = detector.findTargetNoTransformation(stamp, np.array(image))
+            success, obs = detector.findTargetNoTransformation(stamp, img)
         else:
-            success, obs = detector.findTarget(stamp, np.array(image))
+            success, obs = detector.findTarget(stamp, img)
             
         if clearImages:
             obs.clearImage()

@@ -6,10 +6,13 @@ import pylab as pl
 import sm
 import argparse
 import sys
-import rospkg
+from pathlib import Path
 
 from matplotlib.colors import LogNorm 
 np.set_printoptions(suppress=True)
+
+# Resolve auxiliary files path (ROS-independent)
+_AUXILIARY_DIR = Path(__file__).resolve().parent / 'auxiliary_files'
 
 #That's how the output should should look like:
 # 
@@ -99,13 +102,7 @@ if __name__ == "__main__":
         T_SC = camchain.getExtrinsicsImuToCam(cidx).inverse().T()
         CONFIG += printCameraBlock(camConfig, T_SC)
 
-    # get an instance of RosPack with the default search paths
-    rospack = rospkg.RosPack()
-
-    # get the file path
-    kalibr_path = rospack.get_path('kalibr')
-    
-    with open(kalibr_path + '/python/exporters/auxiliary_files/aslam_footer.txt', 'r') as file_:
+    with open(_AUXILIARY_DIR / 'aslam_footer.txt', 'r') as file_:
         CONFIG += file_.read()
 
     #output the stuff

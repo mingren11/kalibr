@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   aslam_imgproc
   aslam_cameras
   aslam_time
-  aslam_cv_serialization
 )
 
 catkin_package(
@@ -36,28 +35,26 @@ add_python_export_library(${PROJECT_NAME} python/aslam_cv
   src/CameraGeometries.cpp
   src/CameraGeometry.cpp
   src/Time.cpp
-#  src/CameraSystem.cpp
-#  src/CameraSystemClasses.cpp
-#  src/MatchingAlgorithms.cpp
-#  src/MultiFrame.cpp
   src/Frontend.cpp
   src/Frame.cpp
-#  src/Descriptors.cpp
   src/CameraProjections.cpp
   src/CameraShutters.cpp
-#  src/ImageSynchronizer.cpp
-#  src/FrameBuilder.cpp
-#  src/ImageContainer.cpp
   src/GridCalibration.cpp
-#  src/Landmark.cpp
   src/Undistorters.cpp
-#  src/NCameras.cpp
-#  src/MultiFrameFactory.cpp
   src/OmniUndistorter.cpp
   src/PinholeUndistorter.cpp
 )
 target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-deprecated-copy") # TODO: Fix...
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+
+# aslam_cv_serialization contains BOOST_CLASS_EXPORT_IMPLEMENT static initializers
+# that must be force-included via --whole-archive. The library also appears normally
+# in catkin_LIBRARIES (as a transitive dep), so we use --allow-multiple-definition
+# to suppress the resulting duplicate symbol error (identical symbols, same library).
+target_link_libraries(${PROJECT_NAME}
+  -Wl,--allow-multiple-definition
+  -Wl,--whole-archive $<TARGET_FILE:aslam_cv_serialization> -Wl,--no-whole-archive
+  ${Boost_LIBRARIES}
+)
 
 ##################
 ## Installation ##

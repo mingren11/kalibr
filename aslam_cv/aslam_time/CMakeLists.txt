@@ -17,6 +17,11 @@ add_library(${PROJECT_NAME}
   src/time.cpp
   src/duration.cpp
 )
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${Boost_INCLUDE_DIRS}
+)
 
 set(OTHER_LIBS)
 if(NOT APPLE)

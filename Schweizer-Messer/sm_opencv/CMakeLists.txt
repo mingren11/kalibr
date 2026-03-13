@@ -13,6 +13,15 @@ catkin_package(
 )
 add_definitions(-D__STRICT_ANSI__)
 
+# Header-only: create INTERFACE library for include propagation
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${Boost_INCLUDE_DIRS}
+)
+target_link_libraries(${PROJECT_NAME} INTERFACE ${catkin_LIBRARIES})
+
 install(DIRECTORY include/
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
 )

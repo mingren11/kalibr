@@ -40,6 +40,10 @@ add_python_export_library(${PROJECT_NAME} python/aslam_backend
   src/TrustRegionPolicies.cpp
   src/SparseBlockMatrix.cpp
 )
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 ##################

@@ -64,17 +64,27 @@ make -j4
 source /catkin_ws/src/kalibr/setup_kalibr.sh
 
 export MPLBACKEND=Agg
-kalibr_calibrate_cameras --folder /catkin_ws/dataset --topics cam0 cam1 \
+kalibr_calibrate_cameras --folder /userdata/kalibr_test/dataset --topics cam0 cam1 \
   --models pinhole-equi pinhole-equi \
-  --target /catkin_ws/params/target_aprilgrid6x6_055.yaml \
+  --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
   --bag-freq 5 \
   --dont-show-report
 
 # 相机+IMU 标定
-kalibr_calibrate_imu_camera --folder /catkin_ws/dataset --cams /catkin_ws/dataset-camchain.yaml --imu /catkin_ws/imu.yaml --target /catkin_ws/params/target_aprilgrid6x6_055.yaml --bag-freq 5
+kalibr_calibrate_imu_camera --folder /userdata/kalibr_test/dataset \
+  --cams /userdata/kalibr_test/dataset-camchain.yaml \
+  --imu /userdata/kalibr_test/imu.yaml \
+  --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
+  --bag-freq 5 --dont-show-report
 
 # 滚动快门标定
-kalibr_calibrate_rs_cameras --folder /catkin_ws/dataset --topic cam0 --model pinhole-radtan-rs --target aprilgrid.yaml --frame-rate 20 --inverse-feature-variance 1
+kalibr_calibrate_rs_cameras --folder /userdata/kalibr_test/dataset \
+  --topic cam0 \
+  --model pinhole-radtan-rs \
+  --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
+  --frame-rate 20 \
+  --inverse-feature-variance 1 \
+  --dont-show-report
 ```
 
 ---

@@ -3,7 +3,7 @@
 #include <boost/make_shared.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+// #include <opencv2/highgui/highgui.hpp>  // Headless: disabled to avoid GTK
 #include <opencv2/imgproc/imgproc.hpp>
 #include <sm/logging.hpp>
 #include <aslam/cameras/GridDetector.hpp>
@@ -31,10 +31,11 @@ GridDetector::GridDetector(boost::shared_ptr<CameraGeometryBase> geometry,
 
 void GridDetector::initializeDetector()
 {
-  if (_options.plotCornerReprojection) {
-    cv::namedWindow("Corner reprojection", cv::WINDOW_NORMAL);
-    cv::resizeWindow("Corner reprojection", 640, 480);
-  }
+  // Headless: display disabled to avoid GTK dependency
+  // if (_options.plotCornerReprojection) {
+  //   cv::namedWindow("Corner reprojection", cv::WINDOW_NORMAL);
+  //   cv::resizeWindow("Corner reprojection", 640, 480);
+  // }
 }
 
 GridDetector::~GridDetector() {
@@ -193,51 +194,11 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
   }
 
 
-  // show plot of reprojected corners
-  if (_options.plotCornerReprojection) {
-    cv::Mat imageCopy1 = image.clone();
-    cv::cvtColor(imageCopy1, imageCopy1, cv::COLOR_GRAY2RGB);
-
-    if (success) {
-      //calculate reprojection
-      std::vector<cv::Point2f> reprojs;
-      outObservation.getCornerReprojection(_geometry, reprojs);
-
-      for (unsigned int i = 0; i < reprojs.size(); i++)
-        cv::circle(imageCopy1, reprojs[i], 3, CV_RGB(255,0,0), 1);
-
-      //calculate reprojection errors
-      double mean, std;
-      Eigen::MatrixXd reprojection_errors_norm;
-      std::vector<cv::Point2f> corners_reproj, corners_detected;
-      compute_stats(mean, std, reprojection_errors_norm, corners_reproj, corners_detected);
-      
-      // show the on the rendered image
-      auto format_str = [](double data) {
-        std::ostringstream ss;
-        ss << std::setprecision(3) << data;
-        return ss.str();
-      };
-      cv::putText(imageCopy1, "reproj err mean: " + format_str(mean), 
-                  cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                  CV_RGB(0,255,0), 3, 8, false);
-      cv::putText(imageCopy1, "reproj err std: " + format_str(std), 
-                  cv::Point(50, 100), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                  CV_RGB(0,255,0), 3, 8, false);
-
-    } else {
-      cv::putText(imageCopy1, "Detection failed! (frame not used)",
-                  cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                  CV_RGB(255,0,0), 3, 8, false);
-    }
-
-    cv::imshow("Corner reprojection", imageCopy1);  // OpenCV call
-    if (_options.imageStepping) {
-      cv::waitKey(0);
-    } else {
-      cv::waitKey(1);
-    }
-  }
+  // Headless: display disabled to avoid GTK dependency
+  // if (_options.plotCornerReprojection) {
+  //   cv::Mat imageCopy1 = image.clone();
+  //   ... cv::imshow("Corner reprojection", imageCopy1); cv::waitKey(...);
+  // }
 
   return success;
 }

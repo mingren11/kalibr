@@ -9,11 +9,12 @@ FUNCTION(add_python_export_library TARGET_NAME PYTHON_MODULE_DIRECTORY)
   # Use Python3
   find_package(Python3 REQUIRED COMPONENTS Development)
 
-  # Boost.Python for Python3
+  # Boost.Python for Python3 (match Python3 version, e.g. python310 for 3.10)
   if(APPLE)
     set(BOOST_COMPONENTS system)
   else()
-    set(BOOST_COMPONENTS python38)
+    string(REPLACE "." "" _py_ver "${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+    set(BOOST_COMPONENTS python${_py_ver})
   endif()
   find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 

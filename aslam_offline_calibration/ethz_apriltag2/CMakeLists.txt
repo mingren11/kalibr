@@ -5,7 +5,8 @@ add_definitions(-fPIC -O3)
 
 find_package(catkin REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(OpenCV REQUIRED)
+# Headless: exclude highgui to avoid GTK dependency
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs calib3d features2d)
 
 catkin_package(
   INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIRS}
@@ -24,10 +25,15 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${catkin_LIBRARIES})
 
-#demo
+#demo (optional, requires libv4l2 - not always in sysroot for cross-compilation)
 if(NOT APPLE)
-  add_executable(apriltags_demo src/example/apriltags_demo.cpp src/example/Serial.cpp)
-  target_link_libraries(apriltags_demo ${PROJECT_NAME} v4l2)
+  find_package(PkgConfig QUIET)
+  pkg_check_modules(v4l2 QUIET libv4l2)
+  if(v4l2_FOUND)
+    add_executable(apriltags_demo src/example/apriltags_demo.cpp src/example/Serial.cpp)
+    target_include_directories(apriltags_demo PRIVATE ${v4l2_INCLUDE_DIRS})
+    target_link_libraries(apriltags_demo ${PROJECT_NAME} ${v4l2_LIBRARIES})
+  endif()
 endif()
 
 ##################

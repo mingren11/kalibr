@@ -14,7 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   sm_eigen
   python_module
 )
-find_package(OpenCV REQUIRED)
+# Headless: exclude highgui to avoid GTK dependency
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs calib3d features2d)
 find_package(Boost REQUIRED COMPONENTS serialization system)
 find_package(Eigen3 REQUIRED)
 

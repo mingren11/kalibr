@@ -3,7 +3,7 @@
 #   source /catkin_ws/src/kalibr/setup_kalibr.sh
 
 KALIBR_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KALIBR_BUILD="${KALIBR_SRC}/build_standalone"
+KALIBR_BUILD="${KALIBR_BUILD:-${KALIBR_SRC}/build_standalone}"
 
 # ── Source tree Python package directories ──────────────────────────────────
 # Each of these has __init__.py + lib*.so symlink (pointing to build dir ELF)

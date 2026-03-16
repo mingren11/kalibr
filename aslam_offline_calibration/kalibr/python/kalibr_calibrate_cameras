@@ -14,11 +14,10 @@ import aslam_cv_backend as acvb
 import kalibr_common as kc
 import kalibr_camera_calibration as kcc
 
-import cv2
+# import cv2  # Headless: disabled to avoid libgtk
 import os
 import numpy as np
 import multiprocessing
-import pylab as pl
 import argparse
 import sys
 import random
@@ -266,6 +265,14 @@ def main():
             doPlot = parsed.plot
             if doPlot:
                 sm.logWarn("Plotting during calibration. Things may be very slow (but you might learn something).")
+            pl = None
+            if doPlot or parsed.doPlotOutliers or (parsed.verbose and len(cameraList) > 1):
+                try:
+                    import pylab as pl
+                except ImportError:
+                    if doPlot or parsed.doPlotOutliers:
+                        raise RuntimeError("matplotlib required for --plot. Install: pip3 install matplotlib")
+                    pl = None
 
             #shuffle the views
             timestamps = obsdb.getAllViewTimestamps()
@@ -302,7 +309,7 @@ def main():
                 progress.sample()
                 
                 #plot added views
-                if success and doPlot:
+                if success and doPlot and pl is not None:
                     recent_view = calibrator.views[-1]
                     cams_in_view = [obs_tuple[0] for obs_tuple in recent_view.rig_observations]
                     plotter = PlotCollection.PlotCollection("Added view (stamp: {0})".format(timestamp))
@@ -368,7 +375,7 @@ def main():
                             cornerRemovalList_allCams.append( (cidx, cornerRemovalList) )
                             
                             #plot the observation with the outliers
-                            if len(cornerRemovalList)>0 and parsed.doPlotOutliers:                                
+                            if len(cornerRemovalList)>0 and parsed.doPlotOutliers and pl is not None:
                                 for cam_id, obs in calibrator.views[batch_id].rig_observations:
                                     if cam_id==cidx:
                                         gridobs = obs
@@ -413,7 +420,7 @@ def main():
             kcc.printParameters(calibrator)
             print("")
             
-            if parsed.verbose and len(calibrator.baselines)>1:
+            if parsed.verbose and len(calibrator.baselines)>1 and pl is not None:
                 f=pl.figure(100006)
                 kcc.plotCameraRig(calibrator.baselines, fno=f.number, clearFigure=False)
                 pl.show()

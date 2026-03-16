@@ -7,7 +7,7 @@
 #include <aslam/targets.hpp>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
 #include <aslam/cameras/GridDetector.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>  // cv::imread (headless: avoid highgui/GTK)
 #include <sm/kinematics/Transformation.hpp>
 
 TEST(GridCalibrationTestSuite, testSerialization)

@@ -43,6 +43,7 @@ add_python_export_library(${PROJECT_NAME} python/aslam_cv
   src/Undistorters.cpp
   src/OmniUndistorter.cpp
   src/PinholeUndistorter.cpp
+  src/ImageIO.cpp
 )
 target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-deprecated-copy") # TODO: Fix...
 

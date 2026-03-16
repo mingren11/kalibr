@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtbb-dev \
     libopencv-dev \
     libv4l-dev \
+    git \
     python3-numpy python3-scipy python3-matplotlib \
     python3-wxgtk4.0 \
     python3-yaml \

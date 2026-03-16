@@ -9,25 +9,35 @@ import aslam_backend as aopt
 import incremental_calibration as ic
 import kalibr_camera_calibration as kcc
 
-from matplotlib.backends.backend_pdf import PdfPages
 import io
 try:
-    # Python 2
     from cStringIO import StringIO
 except ImportError:
-    # Python 3
     from io import StringIO
-import matplotlib.patches as patches
-import mpl_toolkits.mplot3d.axes3d as p3
-import cv2
+# matplotlib: lazy import when generateReport/plot used (optional for headless)
 import numpy as np
-import pylab as pl
 import math
 import gc
 import sys
 
-# make numpy print prettier
 np.set_printoptions(suppress=True)
+
+def _get_mpl():
+    """Lazy load matplotlib. Returns (PdfPages, patches, p3, pl) or None if unavailable."""
+    try:
+        from matplotlib.backends.backend_pdf import PdfPages
+        import matplotlib.patches as patches
+        import mpl_toolkits.mplot3d.axes3d as p3
+        import pylab as pl
+        return (PdfPages, patches, p3, pl)
+    except ImportError:
+        return None
+
+def _require_mpl():
+    m = _get_mpl()
+    if m is None:
+        raise RuntimeError("matplotlib required for plotting. Install: pip3 install matplotlib")
+    return m
 
 
 def normalize(v):
@@ -174,6 +184,7 @@ def getAllPointStatistics(cself, cam_id):
     return stats
 
 def plotPolarError(cself, cam_id, fno=1, clearFigure=True, stats=None, noShow=False, title=""):
+    PdfPages, patches, p3, pl = _require_mpl()
     if stats is None:
         stats = getAllPointStatistics(cself, cam_id)
     angleError = np.array([ [ np.degrees(s.polarAngle), math.sqrt(s.squaredError)] for s in stats ])
@@ -200,6 +211,7 @@ def plotPolarError(cself, cam_id, fno=1, clearFigure=True, stats=None, noShow=Fa
         pl.show()
 
 def plotAzumithalError(cself, cam_id, fno=1, clearFigure=True, stats=None, noShow=False, title=""):
+    PdfPages, patches, p3, pl = _require_mpl()
     if stats is None:
         stats = getAllPointStatistics(cself, cam_id)
     angleError = np.array([ [ np.degrees(s.azumithalAngle), math.sqrt(s.squaredError)] for s in stats ])
@@ -225,6 +237,7 @@ def plotAzumithalError(cself, cam_id, fno=1, clearFigure=True, stats=None, noSho
         pl.show()
 
 def plotAllReprojectionErrors(cself, cam_id, fno=1, noShow=False, clearFigure=True, title=""):
+    PdfPages, patches, p3, pl = _require_mpl()
     # left: observations and projecitons
     # right: scatterplot of reprojection errors
     all_corners, reprojections, rerrs_xy = getReprojectionErrors(cself, cam_id)
@@ -270,7 +283,7 @@ def plotAllReprojectionErrors(cself, cam_id, fno=1, noShow=False, clearFigure=Tr
         pl.show()
 
 def plotCornersAndReprojection(gridobs, reprojs, fno=1, cornerlist=None, clearFigure=True, plotImage=True, color=None, title=""):
-    #create figure
+    PdfPages, patches, p3, pl = _require_mpl()
     f = pl.figure(fno)
     if clearFigure:    
         f.clf()
@@ -381,7 +394,7 @@ def saveChainParametersYaml(cself, resultFile, graph):
 
 
 def plotOutlierCorners(cself, removedOutlierCorners, fno=1, clearFigure=True, title=""):
-    #create figure
+    PdfPages, patches, p3, pl = _require_mpl()
     f = pl.figure(fno)
     if clearFigure:    
         f.clf()
@@ -412,18 +425,25 @@ def plotOutlierCorners(cself, removedOutlierCorners, fno=1, clearFigure=True, ti
         
 
 def generateReport(cself, filename="report.pdf", showOnScreen=True, graph=None, removedOutlierCorners=None):
-    
-    #plotter
+    mpl = _get_mpl()
+    if mpl is None:
+        # Headless: no matplotlib, write text report instead
+        txt_file = filename.replace('.pdf', '.txt') if filename.endswith('.pdf') else filename + '.txt'
+        with open(txt_file, 'w') as f:
+            printParameters(cself, f)
+        print("Report saved to {0} (matplotlib not available, no PDF)".format(txt_file))
+        return
+
+    PdfPages, patches, p3, pl = mpl
     figs = list()
     plotter = PlotCollection.PlotCollection("Calibration report")
     offset = 3010
-    
-    #Output calibration results in text form.
+
     sstream = StringIO()
     printParameters(cself, sstream)
     text = [line for line in StringIO(sstream.getvalue())]
     linesPerPage = 35
-    
+
     while True:
         fig = pl.figure(offset)
         offset += 1
@@ -515,6 +535,7 @@ def generateReport(cself, filename="report.pdf", showOnScreen=True, graph=None, 
         plotter.show()  
     
 def plotCorners(gridobs, fno=1, cornerlist=None, clearFigure=True, plotImage=True, color=None, subplot=0):
+    PdfPages, patches, p3, pl = _require_mpl()
     if color is None:
         color = [0,1,1,0.3];
     f = pl.figure(fno)
@@ -547,6 +568,7 @@ def plotCorners(gridobs, fno=1, cornerlist=None, clearFigure=True, plotImage=Tru
 
 
 def plotTrajectory(cself, fno=1, clearFigure=True, title=""):
+    PdfPages, patches, p3, pl = _require_mpl()
     f = pl.figure(fno)
     if clearFigure:
         f.clf()
@@ -579,6 +601,7 @@ def plotTrajectory(cself, fno=1, clearFigure=True, title=""):
     a3d.auto_scale_xyz([traj_min[0]-size, traj_max[0]+size], [traj_min[1]-size, traj_max[1]+size], [traj_min[2]-size, traj_max[2]+size])
 
 def plotCameraRig(baselines, fno=1, clearFigure=True, title=""):
+    PdfPages, patches, p3, pl = _require_mpl()
     f = pl.figure(fno)
     if clearFigure:
         f.clf()

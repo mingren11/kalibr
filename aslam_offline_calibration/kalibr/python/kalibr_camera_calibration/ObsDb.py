@@ -4,7 +4,6 @@ import aslam_backend as aopt
 
 import numpy as np
 import collections
-import igraph
 import itertools
 import sys
 

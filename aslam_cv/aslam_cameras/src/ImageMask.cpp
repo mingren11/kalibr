@@ -1,7 +1,7 @@
 #include <aslam/cameras/ImageMask.hpp>
 #include <sm/assert_macros.hpp>
 #include <sm/PropertyTree.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>  // cv::imread (was highgui, headless: avoid GTK)
 #include <sm/serialization_macros.hpp>
 
 namespace aslam {

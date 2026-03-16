@@ -1,8 +1,8 @@
 """
 Folder-based image dataset reader (ROS-independent).
 Format: folder with images.csv (timestamp_ns,filename) and image files.
+Headless: image reading via C++ (aslam_cv.imreadGrayscale), no Python cv2/PIL.
 """
-import cv2
 import os
 import numpy as np
 import aslam_cv as acv
@@ -123,15 +123,5 @@ class FolderImageDatasetReader(object):
         if not os.path.exists(img_path):
             raise RuntimeError("Image not found: {0}".format(img_path))
 
-        img = cv2.imread(img_path)
-        if img is None:
-            raise RuntimeError("Failed to load image: {0}".format(img_path))
-
-        if len(img.shape) == 3:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        elif len(img.shape) == 2:
-            pass
-        else:
-            raise RuntimeError("Unsupported image format: {0}".format(img_path))
-
-        return (timestamp, np.array(img, dtype=np.uint8))
+        img = acv.imreadGrayscale(img_path)
+        return (timestamp, np.ascontiguousarray(np.array(img, dtype=np.uint8)))

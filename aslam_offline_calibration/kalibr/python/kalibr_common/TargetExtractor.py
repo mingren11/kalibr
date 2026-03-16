@@ -9,7 +9,7 @@ except ImportError:
    import Queue as queue # python 2.x
 import time
 import copy
-import cv2
+# import cv2  # Headless: disabled to avoid libgtk
 
 def multicoreExtractionWrapper(detector, taskq, resultq, clearImages, noTransformation):    
     while 1:
@@ -105,7 +105,7 @@ def extractCornersFromDataset(dataset, detector, multithreading=False, numProces
     else:    
         print("\r  Extracted corners for %d images (of %d images)                              " % (len(targetObservations), numImages))
 
-    #close all opencv windows that might be open
-    cv2.destroyAllWindows()
-    
+    # Headless: cv2.destroyAllWindows() disabled to avoid libgtk
+    # cv2.destroyAllWindows()
+
     return targetObservations

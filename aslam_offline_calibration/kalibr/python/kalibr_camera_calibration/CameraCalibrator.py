@@ -9,11 +9,8 @@ import aslam_backend as aopt
 import incremental_calibration as ic
 import kalibr_camera_calibration as kcc
 
-from matplotlib.backends.backend_pdf import PdfPages
-import mpl_toolkits.mplot3d.axes3d as p3
-import cv2
+# matplotlib: lazy import when generateReport/plot used (optional for headless)
 import numpy as np
-import pylab as pl
 import math
 import gc
 import sys

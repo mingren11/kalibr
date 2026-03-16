@@ -1,6 +1,6 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+// #include <opencv2/highgui/highgui.hpp>  // Headless: disabled to avoid GTK
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <aslam/cameras/GridCalibrationTargetCheckerboard.hpp>
@@ -49,11 +49,12 @@ GridCalibrationTargetCheckerboard::GridCalibrationTargetCheckerboard(
 /// \brief initialize the object
 void GridCalibrationTargetCheckerboard::initialize()
 {
-  if (_options.showExtractionVideo) {
-    cv::namedWindow("Checkerboard corners", cv::WINDOW_NORMAL);
-    cv::resizeWindow("Checkerboard corners", 640, 480);
-    cv::startWindowThread();
-  }
+  // Headless: display disabled to avoid GTK dependency
+  // if (_options.showExtractionVideo) {
+  //   cv::namedWindow("Checkerboard corners", cv::WINDOW_NORMAL);
+  //   cv::resizeWindow("Checkerboard corners", 640, 480);
+  //   cv::startWindowThread();
+  // }
 }
 
 /// \brief initialize a checkerboard grid (cols*rows = (cols)*(rows) internal grid points)
@@ -101,23 +102,11 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
         cv::TermCriteria(cv::TermCriteria::Type::EPS + cv::TermCriteria::Type::MAX_ITER, 30, 0.1));
   }
 
-  //draw corners
-  if (_options.showExtractionVideo) {
-    //image with refined (blue) and raw corners (red)
-    cv::Mat imageCopy1 = image.clone();
-    cv::cvtColor(imageCopy1, imageCopy1, cv::COLOR_GRAY2RGB);
-    cv::drawChessboardCorners(imageCopy1, cv::Size(rows(), cols()), centers,
-                              true);
-
-    // write error msg
-    if (!success)
-      cv::putText(imageCopy1, "Detection failed! (frame not used)",
-                  cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.8,
-                  CV_RGB(255,0,0), 3, 8, false);
-
-    cv::imshow("Checkerboard corners", imageCopy1);  // OpenCV call
-    cv::waitKey(1);
-  }
+  // Headless: display disabled to avoid GTK dependency
+  // if (_options.showExtractionVideo) {
+  //   cv::Mat imageCopy1 = image.clone();
+  //   cv::drawChessboardCorners(...); cv::imshow(...); cv::waitKey(1);
+  // }
 
   //exit here if there is an error
   if (!success)

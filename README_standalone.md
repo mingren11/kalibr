@@ -8,6 +8,7 @@
 
 - [依赖项安装](#依赖项安装)
 - [编译](#编译)
+- [X5 交叉编译](#x5-交叉编译)
 - [环境配置](#环境配置)
 - [数据集格式](#数据集格式)
 - [标定目标配置](#标定目标配置)
@@ -67,6 +68,97 @@ make -j$(nproc)
 | `BUILD_TESTING` | `ON` | 是否编译测试目标 |
 | `KALIBR_BUILD_TIER2` | `ON` | 编译完整模块（关闭则只编译底层库） |
 | `OpenCV_DIR` | 自动 | 显式指定 OpenCV 路径。若环境中有多个 OpenCV（如 /usr/local 自编译 4.9 + apt 4.2），建议强制使用系统版：`-DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4` |
+
+### X5 交叉编译
+
+在 X5（aarch64）平台上交叉编译 kalibr，需使用项目已有的交叉编译环境和 sysroot。
+
+**前置条件**
+
+1. 已获取并加载交叉编译 Docker 镜像（见 [README 交叉编译环境搭建](https://github.com/deepmirrorinc/LooperHub#交叉编译环境搭建)）
+2. 在 Docker 内进入 `tros_ws` 目录
+3. 确保 `sysroot_docker` 子模块已初始化（`git submodule update --init`）
+
+**步骤**
+
+```bash
+# 1. 进入交叉编译 Docker 后，切到 tros_ws
+cd /path/to/LooperHub/tros_ws
+
+# 2. 配置 X5 交叉编译环境（与 build.sh -p X5 一致）
+export TARGET_ARCH=aarch64
+export TARGET_TRIPLE=aarch64-linux-gnu
+export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
+
+# 3. 确保 sysroot 指向 X5
+# rm -f ../sysroot_docker/usr
+ln -s "$(pwd)/../sysroot_docker/usr_x5" "$(pwd)/../sysroot_docker/usr"
+
+# 4. 进入 kalibr 并创建构建目录
+cd src/kalibr
+mkdir -p build_standalone_x5 && cd build_standalone_x5
+
+# 5. 使用项目 toolchain 配置 CMake（路径相对于 build_standalone_x5）
+cmake .. \
+  -DCMAKE_TOOLCHAIN_FILE="../../../robot_dev_config/aarch64_toolchainfile.cmake" \
+  -DBUILD_TESTING=OFF
+
+# 6. 编译
+make -j$(nproc)
+
+# 7. 安装到 build/install（仅拷贝 install 目录到设备即可）
+make install
+```
+
+**说明**
+
+- 依赖（Boost、Eigen3、OpenCV、SuiteSparse、TBB、Python3）从 `sysroot_docker/usr_x5` 获取，无需在宿主机单独安装
+- 若 OpenCV 查找失败，可显式指定：`-DOpenCV_DIR=../../../sysroot_docker/usr/lib/aarch64-linux-gnu/cmake/opencv4`（路径相对于 build 目录）
+- 编译产物为 aarch64 可执行文件和 `.so`，需拷贝到 X5 板子上运行
+- 在 X5 上使用前，需安装对应 Python 依赖（numpy、scipy、matplotlib、wx、pyyaml 等），或通过 pip 安装
+
+**部署到 X5 及使用**
+
+**方式一：make install 生成 install 目录（推荐）**
+
+编译完成后执行 `make install`，会在 build 目录下生成 `install/`，仅需拷贝该目录到设备：
+
+```bash
+cd build_standalone_x5
+make -j$(nproc)
+make install
+# install/ 位于 build_standalone_x5/install/
+scp -r install root@<X5_IP>:/userdata/kalibr_install
+```
+
+在 X5 上使用：
+
+```bash
+source /userdata/kalibr_install/setup_kalibr.sh
+kalibr_calibrate_cameras --help
+```
+
+默认安装到 `build/install`（由 `KALIBR_INSTALL_TO_BUILD=ON` 控制）。若需安装到系统路径，配置时加 `-DKALIBR_INSTALL_TO_BUILD=OFF`。
+
+**方式二：使用 deploy_standalone.sh**
+
+也可用 `./deploy_standalone.sh <目标目录> build_standalone_x5` 手动打包。
+
+**方式三：拷贝完整源码**
+
+将整个 `kalibr` 源码及 `build_standalone_x5` 一并拷贝到 X5，然后 `export KALIBR_BUILD=...` 并 `source setup_kalibr.sh`。
+
+**X5 上需安装的 Python 依赖**：
+
+```bash
+pip3 install numpy scipy pyyaml
+# 无显示器时：export MPLBACKEND=Agg
+```
+
+- **图像读取**：由 C++ OpenCV imgcodecs 完成，无需 Python cv2/Pillow。
+- **matplotlib**：可选。无 matplotlib 时，标定正常完成，报告输出为 .txt 而非 .pdf；`--plot` 需安装 matplotlib。
+
+**主要命令**：`kalibr_calibrate_cameras`、`kalibr_calibrate_imu_camera`、`kalibr_calibrate_rs_cameras`、`kalibr_create_target_pdf`
 
 ---
 
@@ -545,6 +637,11 @@ PDF 报告包含：
 **Q：无显示器时报 `cannot connect to X server`**
 - 添加 `--dont-show-report` 参数
 - 同时设置 `export MPLBACKEND=Agg`
+
+**Q：`ImportError: libgtk-3.so.0: cannot open shared object file`**
+- **原因**：sysroot 中的 OpenCV 在构建时启用了 GTK，`libopencv_highgui.so` 依赖 `libgtk-3`。X5 等无 GUI 设备通常未安装 GTK。
+- **已内置方案**：kalibr 源码已修改为 headless 模式，注释了所有显示相关代码（`--show-extraction`、`--plot-corner-reprojection` 等），CMake 仅链接 `core/imgproc/imgcodecs/calib3d/features2d`，不链接 `opencv_highgui`。重新编译部署即可，无需 GTK。
+- **若需恢复显示**：需重新构建 sysroot 的 OpenCV 并禁用 GTK（`-DWITH_GTK=OFF`），或安装 `apt install libgtk-3-0`。
 
 **Q：`ImportError: libopencv_highgui.so.409: cannot open shared object file`**
 - **原因**：kalibr 有多个 .so 会加载 OpenCV（`libaslam_cv_python.so`、`libaslam_cameras_april_python.so` 等），任一链接了 OpenCV 4.9 都会报此错。运行环境只有 4.2 时需全部用 4.2 重编。

@@ -10,13 +10,19 @@ import kalibr_errorterms as ket
 from . import IccCalibrator as ic
 from .IccCalibrator import *
 
-import cv2
+# cv2 disabled: pulls in libgtk (headless)
 import os
 import sys
 import math
 import numpy as np
-import pylab as pl
-import scipy.optimize
+try:
+    import pylab as pl
+except ImportError:
+    pl = None
+try:
+    import scipy.optimize
+except ImportError:
+    scipy = None
 
 
 def initCameraBagDataset(bagfile, topic, from_to, freq, perform_synchronization):
@@ -256,7 +262,7 @@ class IccCamera():
         shift = -discrete_shift*dT
         
         #Create plots
-        if verbose:
+        if verbose and pl is not None:
             pl.plot(t, omega_measured_norm, label="measured_raw")
             pl.plot(t, omega_predicted_norm, label="predicted")
             pl.plot(t-shift, omega_measured_norm, label="measured_corrected")
@@ -282,16 +288,16 @@ class IccCamera():
         pose = bsplines.BSplinePose(splineOrder, sm.RotationVector() )
                 
         # Get the checkerboard times.
-        times = np.array([obs.time().toSec()+self.timeshiftCamToImuPrior for obs in self.targetObservations ])                 
-        curve = np.matrix([ pose.transformationToCurveValue( np.dot(obs.T_t_c().T(), T_c_b) ) for obs in self.targetObservations]).T
-        
+        times = np.asarray([obs.time().toSec()+self.timeshiftCamToImuPrior for obs in self.targetObservations ], dtype=np.float64)
+        curve = np.asarray([ pose.transformationToCurveValue( np.dot(obs.T_t_c().T(), T_c_b) ) for obs in self.targetObservations]).T.astype(np.float64)
+
         if np.isnan(curve).any():
             raise RuntimeError("Nans in curve values")
             sys.exit(0)
         
         # Add 2 seconds on either end to allow the spline to slide during optimization
-        times = np.hstack((times[0] - (timeOffsetPadding * 2.0), times, times[-1] + (timeOffsetPadding * 2.0)))
-        curve = np.hstack((curve[:,0], curve, curve[:,-1]))
+        times = np.ascontiguousarray(np.hstack((times[0] - (timeOffsetPadding * 2.0), times, times[-1] + (timeOffsetPadding * 2.0))), dtype=np.float64)
+        curve = np.ascontiguousarray(np.hstack((curve[:,0:1], curve, curve[:,-1:])), dtype=np.float64)
         
         # Make sure the rotation vector doesn't flip
         for i in range(1,curve.shape[1]):
@@ -870,11 +876,13 @@ class IccImu(object):
         dT = np.mean(np.diff( times ))
         shift = discrete_shift*dT
         
-        if self.estimateTimedelay and not self.isReferenceImu:
-            #refine temporal offset only when used.
+        if self.estimateTimedelay and not self.isReferenceImu and scipy is not None:
+            #refine temporal offset only when used (requires scipy)
             objectiveFunction = lambda dt: np.linalg.norm(referenceAbsoluteOmega(dt) - absoluteOmega(dt))**2
             refined_shift = scipy.optimize.fmin(objectiveFunction, np.array([shift]), maxiter=100)[0]
             self.timeOffset = float(refined_shift)
+        else:
+            self.timeOffset = float(shift)
 
         print("Temporal correction with respect to reference IMU ")
         print(self.timeOffset, "[s]", ("" if self.estimateTimedelay else \

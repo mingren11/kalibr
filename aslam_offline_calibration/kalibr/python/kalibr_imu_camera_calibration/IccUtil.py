@@ -3,13 +3,10 @@ from sm import PlotCollection
 from . import IccPlots as plots
 import sm
 import numpy as np
-import pylab as pl
 import sys
 import subprocess
 import yaml
 import time
-from matplotlib.backends.backend_pdf import PdfPages
-import mpl_toolkits.mplot3d.axes3d as p3
 import io
 try:
     # Python 2
@@ -17,13 +14,26 @@ try:
 except ImportError:
     # Python 3
     from io import StringIO
-import matplotlib.patches as patches
+try:
+    import pylab as pl
+    from matplotlib.backends.backend_pdf import PdfPages
+    import mpl_toolkits.mplot3d.axes3d as p3
+    import matplotlib.patches as patches
+    _has_matplotlib = True
+except ImportError:
+    pl = None
+    PdfPages = None
+    p3 = None
+    patches = None
+    _has_matplotlib = False
 
 # make numpy print prettier
 np.set_printoptions(suppress=True)
 
 
 def plotTrajectory(cself, fno=1, clearFigure=True, title=""):
+    if pl is None:
+        return
     f = pl.figure(fno)
     if clearFigure:
         f.clf()
@@ -150,6 +160,10 @@ def printBaselines(self):
 
 
 def generateReport(cself, filename="report.pdf", showOnScreen=True):
+    if not _has_matplotlib:
+        txt_name = filename.rsplit('.', 1)[0] + '.txt' if '.' in filename else filename + '.txt'
+        saveResultTxt(cself, txt_name)
+        return
     figs = list()
     plotter = PlotCollection.PlotCollection("Calibration report")
     offset = 3010

@@ -1,8 +1,13 @@
 import numpy as np
-import pylab as pl
+try:
+    import pylab as pl
+except ImportError:
+    pl = None
 
 
-def plotIMURates(cself, iidx, fno=1, clearFigure=True, noShow=False):   
+def plotIMURates(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return   
     #timestamps we have me
     imu = cself.ImuList[iidx]
     bodyspline = cself.poseDv.spline()   
@@ -53,6 +58,8 @@ def plotIMURates(cself, iidx, fno=1, clearFigure=True, noShow=False):
     f.gca().set_ylim((0.0, max(rates)))
 
 def plotGyroError(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     errors = np.array([np.dot(re.error(), re.error()) for re in  cself.ImuList[iidx].gyroErrors])
    
     f = pl.figure(fno)
@@ -77,6 +84,8 @@ def plotGyroError(cself, iidx, fno=1, clearFigure=True, noShow=False):
     pl.grid('on')
 
 def plotGyroErrorPerAxis(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     errors = np.array([re.error() for re in  cself.ImuList[iidx].gyroErrors])
    
     f = pl.figure(fno)
@@ -96,6 +105,8 @@ def plotGyroErrorPerAxis(cself, iidx, fno=1, clearFigure=True, noShow=False):
         pl.xlim([0., errors.shape[0]])
 
 def plotAccelError(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     errors = np.array([np.dot(re.error(), re.error()) for re in cself.ImuList[iidx].accelErrors])
    
     f = pl.figure(fno)
@@ -120,6 +131,8 @@ def plotAccelError(cself, iidx, fno=1, clearFigure=True, noShow=False):
     pl.grid('on')
 
 def plotAccelErrorPerAxis(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     errors = np.array([re.error() for re in  cself.ImuList[iidx].accelErrors])
    
     f = pl.figure(fno)
@@ -139,6 +152,8 @@ def plotAccelErrorPerAxis(cself, iidx, fno=1, clearFigure=True, noShow=False):
         pl.xlim([0., errors.shape[0]])
 
 def plotAccelBias(cself, imu_idx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     imu = cself.ImuList[imu_idx]
     bias = imu.accelBiasDv.spline()
     times = np.array([im.stamp.toSec() for im in imu.imuData if im.stamp.toSec() > bias.t_min() \
@@ -159,6 +174,8 @@ def plotAccelBias(cself, imu_idx, fno=1, clearFigure=True, noShow=False):
         pl.plot(times, acc_bias_spline[i,0] - bounds, 'r--')
 
 def plotAngularVelocityBias(cself, imu_idx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     imu = cself.ImuList[imu_idx]
     bias = imu.gyroBiasDv.spline()
     times = np.array([im.stamp.toSec() for im in imu.imuData if im.stamp.toSec() > bias.t_min() \
@@ -180,6 +197,8 @@ def plotAngularVelocityBias(cself, imu_idx, fno=1, clearFigure=True, noShow=Fals
 
 #plots angular velocity of the body fixed spline versus all imu measurements
 def plotAngularVelocities(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     #predicted (over the time of the imu)
     imu = cself.ImuList[iidx]
     bodyspline = cself.poseDv.spline()   
@@ -208,7 +227,9 @@ def plotAngularVelocities(cself, iidx, fno=1, clearFigure=True, noShow=False):
         pl.plot(times, measuredAng_body[r,:], 'x', lw=1, label="imu{0}".format(iidx))
         pl.legend()
 
-def plotAccelerations(cself, iidx, fno=1, clearFigure=True, noShow=False):   
+def plotAccelerations(cself, iidx, fno=1, clearFigure=True, noShow=False):
+    if pl is None:
+        return
     #predicted 
     imu = cself.ImuList[iidx]
     bodyspline = cself.poseDv.spline()   
@@ -240,6 +261,8 @@ def plotAccelerations(cself, iidx, fno=1, clearFigure=True, noShow=False):
         pl.legend()
 
 def plotVectorOverTime(times, values, title="", ylabel="", label="", fno=1, clearFigure=True, noShow=False, lw=3):
+    if pl is None:
+        return
     f = pl.figure(fno)
     if clearFigure:
         f.clf()
@@ -254,6 +277,8 @@ def plotVectorOverTime(times, values, title="", ylabel="", label="", fno=1, clea
             pl.legend()
 
 def plotReprojectionScatter(cself, cam_id, fno=1, clearFigure=True, noShow=False, title=""):
+    if pl is None:
+        return
     cam = cself.CameraChain.camList[cam_id]
     
     #create figure
@@ -290,6 +315,8 @@ def plotReprojectionScatter(cself, cam_id, fno=1, clearFigure=True, noShow=False
 
 class CameraPlot:
     def __init__(self, fig,  targetPoints, camSize):
+        if pl is None:
+            raise RuntimeError("matplotlib/pylab required for CameraPlot")
         self.initialized = False
         #get the data
         self.targetPoints = targetPoints

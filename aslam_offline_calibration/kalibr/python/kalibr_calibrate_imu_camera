@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 print("importing libraries")
+import numpy_eigen  # Must load first for Eigen<->numpy converters (standalone)
 import sm
 import kalibr_common as kc
 from kalibr_imu_camera_calibration import *

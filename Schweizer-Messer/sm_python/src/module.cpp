@@ -46,6 +46,7 @@ BOOST_PYTHON_MODULE(libsm_python)
   NumpyEigenConverter<Eigen::Matrix<double, 4, 1> >::register_converter();
   NumpyEigenConverter<Eigen::Matrix<double, 4, 4> >::register_converter();  // transformation matrix T
   NumpyEigenConverter<Eigen::Matrix<double, Eigen::Dynamic, 1> >::register_converter();
+  NumpyEigenConverter<Eigen::Matrix<double, 6, Eigen::Dynamic> >::register_converter();  // BSplinePose curve
   NumpyEigenConverter<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> >::register_converter();
   NumpyEigenConverter<Eigen::Matrix<int, Eigen::Dynamic, 1> >::register_converter();
   NumpyEigenConverter<Eigen::Matrix<boost::uint8_t, Eigen::Dynamic, Eigen::Dynamic> >::register_converter();

@@ -283,7 +283,7 @@ class IccCamera():
         print(self.timeshiftCamToImuPrior)
         
     #initialize a pose spline using camera poses (pose spline = T_wb)
-    def initPoseSplineFromCamera(self, splineOrder=6, poseKnotsPerSecond=100, timeOffsetPadding=0.02):
+    def initPoseSplineFromCamera(self, splineOrder=6, poseKnotsPerSecond=50, timeOffsetPadding=0.02):
         T_c_b = self.T_extrinsic.T()        
         pose = bsplines.BSplinePose(splineOrder, sm.RotationVector() )
                 
@@ -460,7 +460,7 @@ class IccCameraChain():
             print("Baseline: ", np.linalg.norm(self.camList[camNr].T_extrinsic.t()), " [m]")
    
     #initialize a pose spline for the chain
-    def initializePoseSplineFromCameraChain(self, splineOrder=6, poseKnotsPerSecond=100, timeOffsetPadding=0.02):
+    def initializePoseSplineFromCameraChain(self, splineOrder=6, poseKnotsPerSecond=50, timeOffsetPadding=0.02):
         #use the main camera for the spline to initialize the poses
         return self.camList[0].initPoseSplineFromCamera(splineOrder, poseKnotsPerSecond, timeOffsetPadding)
 

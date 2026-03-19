@@ -97,6 +97,8 @@ def parseArgs():
     groupOpt.add_argument('--max-iter', type=int, default=30, dest='max_iter', help='Max. iterations (default: %(default)s)', required=False)
     groupOpt.add_argument('--recover-covariance', action='store_true', dest='recover_cov', help='Recover the covariance of the design variables.', required=False)
     groupOpt.add_argument('--timeoffset-padding', type=float, default=30.e-3, dest='timeoffset_padding', help='Maximum range in which the timeoffset may change during estimation [s] (default: %(default)s)', required=False)
+    groupOpt.add_argument('--pose-knots-per-second', type=int, default=50, dest='pose_knots_per_second', help='Pose spline knots per second. Lower values speed up calibration but reduce temporal resolution (default: %(default)s)', required=False)
+    groupOpt.add_argument('--bias-knots-per-second', type=int, default=50, dest='bias_knots_per_second', help='IMU bias spline knots per second. Lower values (e.g. 10, 5) speed up calibration but reduce bias temporal resolution (default: %(default)s)', required=False)
 
     #Result options  
     outputSettings = parser.add_argument_group('Output options')
@@ -195,8 +197,8 @@ def main():
     print("")
     print("Building the problem")
     iCal.buildProblem(splineOrder=6, 
-                      poseKnotsPerSecond=100, 
-                      biasKnotsPerSecond=50, 
+                      poseKnotsPerSecond=parsed.pose_knots_per_second, 
+                      biasKnotsPerSecond=parsed.bias_knots_per_second, 
                       doPoseMotionError=False,
                       doBiasMotionError=True,
                       blakeZisserCam=-1,

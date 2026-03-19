@@ -44,10 +44,10 @@
 ```bash
 cd /catkin_ws/src/kalibr
 mkdir build_standalone && cd build_standalone
-cmake .. -DKALIBR_BUILD_TIER2=OFF   # 仅 tier 1，用于验证
-# 或
-cmake ..   # 全量构建
+cmake .. -DCMAKE_BUILD_TYPE=Release  # 全量构建
 make -j4
+make install
+scp -r install root@192.168.137.100:/userdata/kalibr_install    (记得先删除/userdata/kalibr_install目录)
 ```
 
 ### Phase 7: 实时工具处理 ✅
@@ -61,9 +61,9 @@ make -j4
 ```bash
 # 相机标定（多相机）
 
-source /catkin_ws/src/kalibr/setup_kalibr.sh
 
-export MPLBACKEND=Agg
+source /userdata/kalibr_install/setup.sh
+
 kalibr_calibrate_cameras --folder /userdata/kalibr_test/dataset --topics cam0 cam1 \
   --models pinhole-equi pinhole-equi \
   --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
@@ -75,6 +75,8 @@ kalibr_calibrate_imu_camera --folder /userdata/kalibr_test/dataset \
   --cams /userdata/kalibr_test/dataset-camchain.yaml \
   --imu /userdata/kalibr_test/imu.yaml \
   --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
+  --pose-knots-per-second 40 \
+  --bias-knots-per-second 10 \
   --bag-freq 5 --dont-show-report
 
 # 滚动快门标定

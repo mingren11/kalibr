@@ -40,6 +40,11 @@ list(INSERT CMAKE_MODULE_PATH 0
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/catkin_compat.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/add_python_export_library_standalone.cmake)
 
+# Cross-sysroot: Eigen3Config.cmake and other CMake packages live under <sysroot>/usr (e.g. share/eigen3/cmake)
+if(CMAKE_SYSROOT)
+  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SYSROOT}/usr")
+endif()
+
 # Find common dependencies
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization thread regex)
 find_package(Eigen3 REQUIRED)

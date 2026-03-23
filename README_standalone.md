@@ -54,8 +54,8 @@ sudo ln -sf /usr/bin/python3 /usr/bin/python
 cd /path/to/kalibr
 mkdir -p build_standalone && cd build_standalone
 
-# 配置
-cmake .. -DBUILD_TESTING=OFF
+# 配置（Release：优化编译，适合日常使用与部署；调试可加 -DCMAKE_BUILD_TYPE=Debug）
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 
 # 编译（使用所有核心，首次约 30~60 分钟）
 make -j$(nproc)
@@ -65,6 +65,7 @@ make -j$(nproc)
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
+| `CMAKE_BUILD_TYPE` | 未设置 | 单配置生成器（Unix Makefiles、Ninja）下生效。发布与板端部署建议 **`Release`**（`-O3 -DNDEBUG` 等）；调试使用 **`Debug`**。未指定时 CMake 可能不启用 `-O`，性能较差 |
 | `BUILD_TESTING` | `ON` | 是否编译测试目标 |
 | `KALIBR_BUILD_TIER2` | `ON` | 编译完整模块（关闭则只编译底层库） |
 | `OpenCV_DIR` | 自动 | 显式指定 OpenCV 路径。若环境中有多个 OpenCV（如 /usr/local 自编译 4.9 + apt 4.2），建议强制使用系统版：`-DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4` |
@@ -91,7 +92,7 @@ export TARGET_TRIPLE=aarch64-linux-gnu
 export CROSS_COMPILE=/usr/bin/$TARGET_TRIPLE-
 
 # 3. 确保 sysroot 指向 X5
-# rm -f ../sysroot_docker/usr
+rm -f ../sysroot_docker/usr
 ln -s "$(pwd)/../sysroot_docker/usr_x5" "$(pwd)/../sysroot_docker/usr"
 
 # 4. 进入 kalibr 并创建构建目录
@@ -101,6 +102,7 @@ mkdir -p build_standalone_x5 && cd build_standalone_x5
 # 5. 使用项目 toolchain 配置 CMake（路径相对于 build_standalone_x5）
 cmake .. \
   -DCMAKE_TOOLCHAIN_FILE="../../../robot_dev_config/aarch64_toolchainfile.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTING=OFF
 
 # 6. 编译
@@ -113,6 +115,9 @@ make install
 **说明**
 
 - 依赖（Boost、Eigen3、OpenCV、SuiteSparse、TBB、Python3）从 `sysroot_docker/usr_x5` 获取，无需在宿主机单独安装
+- **Release 构建**：步骤 5 中已使用 `-DCMAKE_BUILD_TYPE=Release`；若曾用 Debug 或未指定类型配置过，请删除构建目录或 `CMakeCache.txt` 后重新 `cmake`，否则会沿用旧缓存
+- **必须在执行 `cmake` 的同一终端里先完成步骤 2 的 `export`（`CROSS_COMPILE` 等）**。若未设置交叉编译器，CMake 会使用宿主机 `g++` 并从 `/usr/lib/x86_64-linux-gnu` 找 Boost，随后易出现 Threads / Eigen3 等与交叉编译不一致的错误
+- Eigen3 的 CMake 包在 `sysroot_docker/usr/share/eigen3/cmake`；本仓库 Kalibr 的 `CMakeLists.txt` 在检测到 `CMAKE_SYSROOT` 时会自动把 `<sysroot>/usr` 加入 `CMAKE_PREFIX_PATH`，无需改工具链。若仍报找不到 Eigen3，请确认 `usr` 已正确符号链接到 `usr_x5`（步骤 3）
 - 若 OpenCV 查找失败，可显式指定：`-DOpenCV_DIR=../../../sysroot_docker/usr/lib/aarch64-linux-gnu/cmake/opencv4`（路径相对于 build 目录）
 - 编译产物为 aarch64 可执行文件和 `.so`，需拷贝到 X5 板子上运行
 - 在 X5 上使用前，需安装对应 Python 依赖（numpy、scipy、matplotlib、wx、pyyaml 等），或通过 pip 安装
@@ -139,14 +144,6 @@ kalibr_calibrate_cameras --help
 ```
 
 默认安装到 `build/install`（由 `KALIBR_INSTALL_TO_BUILD=ON` 控制）。若需安装到系统路径，配置时加 `-DKALIBR_INSTALL_TO_BUILD=OFF`。
-
-**方式二：使用 deploy_standalone.sh**
-
-也可用 `./deploy_standalone.sh <目标目录> build_standalone_x5` 手动打包。
-
-**方式三：拷贝完整源码**
-
-将整个 `kalibr` 源码及 `build_standalone_x5` 一并拷贝到 X5，然后 `export KALIBR_BUILD=...` 并 `source setup_kalibr.sh`。
 
 **X5 上需安装的 Python 依赖**：
 
@@ -235,7 +232,7 @@ dataset/
 说明：
 - 角速度 gx,gy,gz 单位：rad/s
 - 线加速度 ax,ay,az 单位：m/s²
-- 典型 IMU 采样率：200 Hz（每 5ms 一条）
+- 典型 IMU 采样率：400 Hz（每 2.5ms 一条）
 
 ---
 
@@ -659,7 +656,7 @@ PDF 报告包含：
 - **解决**：完整清理后用系统 OpenCV 重新编译：
   ```bash
   cd build_standalone && rm -rf *
-  cmake .. -DBUILD_TESTING=OFF -DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
+  cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DOpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
   make -j$(nproc)
   ```
   若系统 OpenCV 的 cmake 路径不同，可用：`find /usr -name "OpenCVConfig.cmake" 2>/dev/null` 查找。

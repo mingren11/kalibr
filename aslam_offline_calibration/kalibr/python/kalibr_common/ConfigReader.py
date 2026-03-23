@@ -655,7 +655,112 @@ class CalibrationTargetParameters(ParametersBase):
         
 class CameraChainParameters(ParametersBase):
     def __init__(self, yamlFile, createYaml=False):
-        ParametersBase.__init__(self, yamlFile, "CameraChainParameters", createYaml)
+        if not createYaml and isinstance(yamlFile, str) and yamlFile.lower().endswith('.json'):
+            self.yamlFile = yamlFile
+            self.name = "CameraChainParameters"
+            self.data = dict()
+            self._loadFromCustomJSON(yamlFile)
+        else:
+            ParametersBase.__init__(self, yamlFile, "CameraChainParameters", createYaml)
+
+    def _loadFromCustomJSON(self, json_file):
+        """Load camera chain from custom JSON calibration format.
+
+        Expected format:
+        {
+            "base_name": "CAMERA_LEFT",
+            "camera_calibrations": [
+                {
+                    "camera_name": "...",
+                    "extrinsics": {
+                        "pose_base_in_sensor": {
+                            "rotation": {"w": ..., "x": ..., "y": ..., "z": ...},
+                            "translation": {"x": ..., "y": ..., "z": ...}
+                        }
+                    },
+                    "intrinsics": {
+                        "camera_model": "FISHEYE",
+                        "fx": ..., "fy": ..., "cx": ..., "cy": ...,
+                        "distortion_coef": [...],
+                        "width": ..., "height": ...
+                    }
+                },
+                ...
+            ]
+        }
+
+        Supported camera_model values: FISHEYE (mapped to pinhole+equidistant).
+        The first camera in the list is treated as the base (cam0).
+        ROS topics are derived from camera_name (e.g. CAMERA_LEFT -> /camera_left).
+        """
+        import json as _json
+
+        try:
+            with open(json_file, 'r') as f:
+                json_data = _json.load(f)
+        except Exception as e:
+            self.raiseError("Could not read JSON from {0}: {1}".format(json_file, e))
+
+        try:
+            camera_calibrations = json_data["camera_calibrations"]
+        except KeyError as e:
+            self.raiseError("Field {0} missing in JSON file: {1}".format(e, json_file))
+
+        # Collect T_n_0 (pose_base_in_sensor) for each camera to compute T_cn_cnm1 later
+        T_n_0_list = []
+
+        for i, cam_data in enumerate(camera_calibrations):
+            # --- Extrinsics ---
+            pose = cam_data["extrinsics"]["pose_base_in_sensor"]
+            rot   = pose["rotation"]
+            trans = pose["translation"]
+            w, x, y, z = rot["w"], rot["x"], rot["y"], rot["z"]
+            tx, ty, tz  = trans["x"], trans["y"], trans["z"]
+
+            # Unit quaternion -> rotation matrix
+            R = np.array([
+                [1.0 - 2*(y*y + z*z),  2*(x*y - w*z),        2*(x*z + w*y)],
+                [2*(x*y + w*z),         1.0 - 2*(x*x + z*z),  2*(y*z - w*x)],
+                [2*(x*z - w*y),         2*(y*z + w*x),         1.0 - 2*(x*x + y*y)],
+            ])
+            T = np.eye(4)
+            T[:3, :3] = R
+            T[:3, 3]  = [tx, ty, tz]
+            T_n_0_list.append(T)
+
+            # --- Intrinsics ---
+            intr = cam_data["intrinsics"]
+            model_str = intr["camera_model"].upper()
+
+            if model_str == "FISHEYE":
+                camera_model = "pinhole"
+                dist_model   = "equidistant"
+            else:
+                self.raiseError(
+                    "Unsupported camera_model '{0}' in JSON (cam {1}). "
+                    "Supported: FISHEYE".format(model_str, i))
+
+            intrinsics = [float(intr["fx"]), float(intr["fy"]),
+                          float(intr["cx"]), float(intr["cy"])]
+            dist_coeff = [float(c) for c in intr["distortion_coef"]]
+            resolution = [int(intr["width"]), int(intr["height"])]
+
+            # Derive ROS topic from camera_name
+            topic = "/" + cam_data["camera_name"].lower()
+
+            cam_params = CameraParameters("TEMP_CONFIG", createYaml=True)
+            cam_params.setRosTopic(topic)
+            cam_params.setIntrinsics(camera_model, intrinsics)
+            cam_params.setDistortion(dist_model, dist_coeff)
+            cam_params.setResolution(resolution)
+            self.addCameraAtEnd(cam_params)
+
+        # Set inter-camera extrinsics: T_cn_cnm1 = T_n_0 * inv(T_(n-1)_0)
+        for i in range(1, len(camera_calibrations)):
+            T_n_0   = T_n_0_list[i]
+            T_nm1_0 = T_n_0_list[i - 1]
+            T_n_nm1 = T_n_0.dot(np.linalg.inv(T_nm1_0))
+            self.setExtrinsicsLastCamToHere(i, sm.Transformation(T_n_nm1))
     
     ###################################################
     # Accessors

@@ -68,9 +68,8 @@ def parseArgs():
     
     #data source
     groupData = parser.add_argument_group('Dataset source')
-    groupData.add_argument('--bag', dest='bagfile', nargs=1, help='Ros bag file containing image and imu data (rostopics specified in the yamls)', action=Once)
-    groupData.add_argument('--folder', dest='folder', nargs=1, help='Folder dataset (no ROS): dataset/cam0/, dataset/cam1/, dataset/imu.csv', action=Once)
-    groupData.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the bag data starting from up to this time [s]')
+    groupData.add_argument('--folder', dest='folder', nargs=1, help='Folder dataset: dataset/cam0/, dataset/cam1/, dataset/imu.csv', action=Once, required=True)
+    groupData.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the data starting from up to this time [s]')
     groupData.add_argument('--bag-freq', metavar='bag_freq', type=float, help='Frequency to extract features at [hz]')
     groupData.add_argument('--perform-synchronization',  action='store_true', dest='perform_synchronization', \
                           help='Perform a clock synchronization according to \'Clock synchronization algorithms for network measurements\' by Zhang et al. (2002).')
@@ -119,13 +118,8 @@ def parseArgs():
     except:
         sys.exit(2)
 
-    # Require either --bag or --folder
-    if (parsed.bagfile is None) == (parsed.folder is None):
-        sm.logError("Exactly one of --bag or --folder must be specified.")
-        sys.exit(2)
-    if parsed.folder:
-        parsed.bagfile = parsed.folder  # use same attr for dataset path
-                 
+    parsed.bagfile = parsed.folder  # use same attr for dataset path
+
     if parsed.verbose:
         parsed.showextraction = True             
     
@@ -226,7 +220,7 @@ def main():
     util.printResults(iCal, withCov=parsed.recover_cov)
     print("")
 
-    bagtag = os.path.splitext(parsed.bagfile[0])[0]
+    bagtag = parsed.folder[0].rstrip('/')
     yamlFilename = bagtag + "-camchain-imucam.yaml"
     iCal.saveCamChainParametersYaml(yamlFilename)
     print("Results written to:")

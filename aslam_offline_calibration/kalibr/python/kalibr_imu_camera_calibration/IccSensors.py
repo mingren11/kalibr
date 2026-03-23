@@ -26,8 +26,7 @@ except ImportError:
 
 
 def initCameraBagDataset(bagfile, topic, from_to, freq, perform_synchronization):
-    is_folder = os.path.isdir(bagfile)
-    print("Initializing camera dataset reader ({0}):".format("folder" if is_folder else "rosbag"))
+    print("Initializing camera dataset reader (folder):")
     print("\tDataset:          {0}".format(bagfile))
     print("\tTopic:            {0}".format(topic))
     reader = kc.create_image_dataset(bagfile, topic, bag_from_to=from_to, bag_freq=freq,
@@ -36,8 +35,7 @@ def initCameraBagDataset(bagfile, topic, from_to, freq, perform_synchronization)
     return reader
 
 def initImuBagDataset(bagfile, topic, from_to=None, perform_synchronization=False):
-    is_folder = os.path.isdir(bagfile)
-    print("Initializing imu dataset reader ({0}):".format("folder" if is_folder else "rosbag"))
+    print("Initializing imu dataset reader (folder):")
     print("\tDataset:          {0}".format(bagfile))
     print("\tTopic:            {0}".format(topic))
     reader = kc.create_imu_dataset(bagfile, topic, bag_from_to=from_to,

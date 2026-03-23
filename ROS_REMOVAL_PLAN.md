@@ -34,6 +34,15 @@
 - 确保主标定流程可完全使用 folder 格式运行
 - 移除或标记 `kalibr_bagcreater`、`kalibr_bagextractor` 为 ROS 专用（可选保留作转换工具）
 
+### Phase 8: 完全移除所有 ROS1 代码 ✅
+**改动**:
+- 删除 `ImageDatasetReader.py`、`ImuDatasetReader.py`（旧 rosbag 读取器）
+- 删除 `kalibr_bagcreater`、`kalibr_bagextractor`、`kalibr_camera_focus`、`kalibr_camera_validator`（纯 ROS 工具）
+- `kalibr_common/__init__.py`：移除 lazy bag reader 加载
+- `DatasetFactory.py`：仅支持 folder 模式，删除 bag 分支
+- `kalibr_calibrate_cameras/imu_camera/rs_cameras`：移除 `--bag` 参数，`--folder` 为唯一数据源
+- `aslam_cameras/aslam_cameras_april` CMakeLists.txt：移除 `ADD_DEFINITIONS(-DASLAM_USE_ROS)`
+
 ### Phase 6: 构建系统迁移（catkin → CMake）🔄 进行中
 **范围**: 39 个包
 **策略**: 分 tier 迁移验证，tier 1 已通过

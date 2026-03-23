@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(aslam_cameras_april)
 
-ADD_DEFINITIONS(-DASLAM_USE_ROS)
-
 find_package(catkin REQUIRED COMPONENTS
   sm_python
   aslam_cameras

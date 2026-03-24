@@ -42,10 +42,19 @@ class FolderImuDatasetReader(object):
             self.folder = os.path.dirname(folder_or_csv)
         else:
             self.folder = os.path.abspath(folder_or_csv)
-            csv_file = csv_path or os.path.join(self.folder, 'imu.csv')
-
-        if not os.path.exists(csv_file):
-            raise RuntimeError("imu.csv not found: {0}".format(csv_file))
+            if csv_path:
+                csv_file = csv_path
+            else:
+                # Try imu.csv (legacy) then data.csv (new format)
+                candidate_legacy = os.path.join(self.folder, 'imu.csv')
+                candidate_new    = os.path.join(self.folder, 'data.csv')
+                if os.path.exists(candidate_legacy):
+                    csv_file = candidate_legacy
+                elif os.path.exists(candidate_new):
+                    csv_file = candidate_new
+                else:
+                    raise RuntimeError(
+                        "IMU CSV not found in {0} (tried imu.csv and data.csv)".format(self.folder))
 
         self.topic = self.folder  # for compatibility
 
@@ -68,7 +77,7 @@ class FolderImuDatasetReader(object):
                         continue
 
         if not self.entries:
-            raise RuntimeError("No valid entries in imu.csv")
+            raise RuntimeError("No valid IMU entries in {0}".format(csv_file))
 
         self.entries.sort(key=lambda x: x[0])
         self.indices = np.arange(len(self.entries))
@@ -104,5 +113,5 @@ class FolderImuDatasetReader(object):
 
     def getMessage(self, idx):
         ts_ns, omega, alpha = self.entries[idx]
-        timestamp = acv.Time(ts_ns // 10**9, ts_ns % 10**9)
+        timestamp = acv.Time(ts_ns / 1e9)
         return (timestamp, omega, alpha)

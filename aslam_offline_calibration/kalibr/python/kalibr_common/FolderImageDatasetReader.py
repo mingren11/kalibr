@@ -27,45 +27,73 @@ class FolderImageDatasetReaderIterator(object):
 
 class FolderImageDatasetReader(object):
     """
-    Read images from a folder with images.csv.
-    CSV format: timestamp_ns,filename (header optional)
+    Read images from a folder.
+
+    Supported layouts
+    -----------------
+    New format (preferred)::
+
+        cam0/
+          timestamps.txt   <- one timestamp_ns per line
+          data/
+            <ts>.png
+            ...
+
+    Legacy format::
+
+        cam0/
+          images.csv       <- timestamp_ns,filename  (header optional)
+          <images>
     """
     def __init__(self, folder, csv_path=None, folder_from_to=None, folder_freq=None):
-        """
-        Args:
-            folder: Path to folder containing images and images.csv
-            csv_path: Optional path to CSV (default: folder/images.csv)
-            folder_from_to: Optional (start_offset_sec, end_offset_sec) to truncate
-            folder_freq: Optional max frequency (Hz) to subsample
-        """
         self.folder = os.path.abspath(folder)
         self.topic = self.folder  # for compatibility with display/logging
         self.bagfile = self.folder  # for compatibility with RsCalibrator
 
-        csv_file = csv_path or os.path.join(self.folder, 'images.csv')
-        if not os.path.exists(csv_file):
-            raise RuntimeError("images.csv not found in {0}".format(self.folder))
+        timestamps_file = os.path.join(self.folder, 'timestamps.txt')
+        data_subdir     = os.path.join(self.folder, 'data')
 
-        # Parse CSV: timestamp_ns (or timestamp_sec), filename
-        self.entries = []
-        with open(csv_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                parts = line.split(',')
-                if len(parts) >= 2:
+        if os.path.exists(timestamps_file) and os.path.isdir(data_subdir):
+            # --- New format: timestamps.txt + data/<ts>.png ---
+            self._image_dir = data_subdir
+            self.entries = []
+            with open(timestamps_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
                     try:
-                        ts_val = float(parts[0].strip())
-                        # If value < 1e12, assume seconds; else nanoseconds
-                        ts_ns = int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
-                        fname = parts[1].strip()
-                        self.entries.append((ts_ns, fname))
+                        ts_ns = int(line)
+                        self.entries.append((ts_ns, '{0}.png'.format(ts_ns)))
                     except ValueError:
-                        continue  # skip header or malformed lines
+                        continue
+            if not self.entries:
+                raise RuntimeError("No valid timestamps in {0}".format(timestamps_file))
+        else:
+            # --- Legacy format: images.csv ---
+            self._image_dir = self.folder
+            csv_file = csv_path or os.path.join(self.folder, 'images.csv')
+            if not os.path.exists(csv_file):
+                raise RuntimeError(
+                    "Neither 'timestamps.txt + data/' nor 'images.csv' found in {0}".format(self.folder))
 
-        if not self.entries:
-            raise RuntimeError("No valid entries in images.csv")
+            self.entries = []
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    parts = line.split(',')
+                    if len(parts) >= 2:
+                        try:
+                            ts_val = float(parts[0].strip())
+                            ts_ns = int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
+                            fname = parts[1].strip()
+                            self.entries.append((ts_ns, fname))
+                        except ValueError:
+                            continue
+            if not self.entries:
+                raise RuntimeError("No valid entries in images.csv")
 
         # Sort by timestamp
         self.entries.sort(key=lambda x: x[0])
@@ -117,9 +145,9 @@ class FolderImageDatasetReader(object):
 
     def getImage(self, idx):
         ts_ns, fname = self.entries[idx]
-        timestamp = acv.Time(ts_ns // 10**9, ts_ns % 10**9)
+        timestamp = acv.Time(ts_ns / 1e9)
 
-        img_path = os.path.join(self.folder, fname)
+        img_path = os.path.join(self._image_dir, fname)
         if not os.path.exists(img_path):
             raise RuntimeError("Image not found: {0}".format(img_path))
 

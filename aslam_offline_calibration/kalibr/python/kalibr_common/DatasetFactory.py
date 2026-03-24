@@ -25,11 +25,17 @@ def create_image_dataset(path, topic, bag_from_to=None, bag_freq=None, perform_s
 def create_imu_dataset(path, topic, bag_from_to=None, perform_synchronization=False):
     """
     Create IMU dataset reader from folder.
-    path: folder containing imu.csv.
+
+    Looks for the IMU data in the following order:
+    1. <path>/<topic_folder>/  (e.g. imu0/data.csv)
+    2. <path>/                 (legacy: imu.csv in dataset root)
     """
     if not os.path.isdir(path):
         raise RuntimeError(
             "Expected a folder dataset, got: '{0}'. "
             "Only folder-based datasets are supported (no ROS bag).".format(path))
     from .FolderImuDatasetReader import FolderImuDatasetReader
+    imu_subfolder = os.path.join(path, _topic_to_folder(topic))
+    if os.path.isdir(imu_subfolder):
+        return FolderImuDatasetReader(imu_subfolder, folder_from_to=bag_from_to)
     return FolderImuDatasetReader(path, folder_from_to=bag_from_to)

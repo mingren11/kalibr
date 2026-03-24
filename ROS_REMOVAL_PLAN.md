@@ -68,3 +68,15 @@ dataset/
 dataset/
   imu.csv               # timestamp_ns,gx,gy,gz,ax,ay,az (单位: rad/s, m/s^2)
 ```
+
+
+
+
+# 相机+IMU 标定
+kalibr_calibrate_imu_camera --folder /userdata/online_calibr/20250827_054720 \
+  --cams /app/calibration/rgb_calibr.calibration.json \
+  --imu /userdata/kalibr_test/imu.yaml \
+  --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
+  --pose-knots-per-second 40 \
+  --bias-knots-per-second 10 \
+  --bag-freq 5 --dont-show-report

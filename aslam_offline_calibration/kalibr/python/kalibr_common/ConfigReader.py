@@ -745,8 +745,8 @@ class CameraChainParameters(ParametersBase):
             dist_coeff = [float(c) for c in intr["distortion_coef"]]
             resolution = [int(intr["width"]), int(intr["height"])]
 
-            # Derive ROS topic from camera_name
-            topic = "/" + cam_data["camera_name"].lower()
+            # Use index-based topic so it matches folder names cam0/, cam1/, ...
+            topic = "/cam{0}".format(i)
 
             cam_params = CameraParameters("TEMP_CONFIG", createYaml=True)
             cam_params.setRosTopic(topic)

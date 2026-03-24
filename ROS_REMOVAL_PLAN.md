@@ -73,8 +73,8 @@ dataset/
 
 
 # 相机+IMU 标定
-kalibr_calibrate_imu_camera --folder /userdata/online_calibr/20250827_054720 \
-  --cams /app/calibration/rgb_calibr.calibration.json \
+kalibr_calibrate_imu_camera --folder /userdata/online_calibr/20250826_235307 \
+  --cams /app/calibration/rgb.calibration.json \
   --imu /userdata/kalibr_test/imu.yaml \
   --target /userdata/kalibr_test/params/target_aprilgrid6x6_055.yaml \
   --pose-knots-per-second 40 \

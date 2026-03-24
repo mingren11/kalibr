@@ -863,7 +863,7 @@ class CameraChainParameters(ParametersBase):
             print("Camera chain - cam{0}:".format(camNr))
             camConfig = self.getCameraParameters(camNr)
             camConfig.printDetails(dest)
-            
+
             #print baseline if available
             try:
                 T = self.getExtrinsicsLastCamToHere(camNr)
@@ -871,3 +871,79 @@ class CameraChainParameters(ParametersBase):
             except:
                 print("  baseline: no data available", file=dest)
                 pass
+
+
+def filter_chain_by_dataset(chain, dataset_folder):
+    """Return a new CameraChainParameters containing only cameras whose
+    data folder exists in dataset_folder.
+
+    Cameras without a matching folder are silently skipped with a warning.
+    Extrinsics (T_cn_cnm1) are recomputed for the remaining cameras so
+    the new chain is geometrically consistent regardless of which cameras
+    were removed.
+
+    Topic -> folder mapping: first non-empty path component of the ROS topic
+    is used as the folder name (e.g. /cam0/image_raw -> cam0/).
+
+    Args:
+        chain (CameraChainParameters): the original chain (any number of cams)
+        dataset_folder (str): root folder of the dataset
+
+    Returns:
+        CameraChainParameters with only the available cameras.
+
+    Raises:
+        RuntimeError: if no cameras at all have data.
+    """
+    import os as _os
+
+    def _topic_to_folder(topic):
+        parts = [p for p in topic.split('/') if p]
+        return parts[0] if parts else ''
+
+    n = chain.numCameras()
+
+    # ---- 1. determine which cameras have data --------------------------------
+    available = []
+    for i in range(n):
+        topic = chain.getCameraParameters(i).getRosTopic()
+        folder_name = _topic_to_folder(topic)
+        cam_path = _os.path.join(dataset_folder, folder_name)
+        if folder_name and _os.path.isdir(cam_path):
+            available.append(i)
+        else:
+            print("[filter_chain_by_dataset] WARNING: cam{0} (topic={1}, folder={2}) "
+                  "not found in dataset, skipping.".format(i, topic, cam_path))
+
+    if not available:
+        raise RuntimeError(
+            "filter_chain_by_dataset: no camera data found in '{0}'. "
+            "Check that cam0/, cam1/, ... folders exist.".format(dataset_folder))
+
+    if len(available) == n:
+        return chain  # nothing to filter
+
+    print("[filter_chain_by_dataset] Using {0}/{1} cameras: {2}".format(
+        len(available), n, ["cam{0}".format(i) for i in available]))
+
+    # ---- 2. build T_i_0 for every original camera by composing T_cn_cnm1 ---
+    # T_cn_cnm1 transforms points from cam_{n-1} into cam_n.
+    # T_i_0 = T_i_(i-1) @ T_(i-1)_(i-2) @ ... @ T_1_0
+    T_i_0 = [np.eye(4)]
+    for i in range(1, n):
+        T_i_im1 = chain.getExtrinsicsLastCamToHere(i).T()
+        T_i_0.append(T_i_im1.dot(T_i_0[i - 1]))
+
+    # ---- 3. build the filtered chain ----------------------------------------
+    new_chain = CameraChainParameters("TEMP_CONFIG", createYaml=True)
+
+    for cam_params_i in available:
+        new_chain.addCameraAtEnd(chain.getCameraParameters(cam_params_i))
+
+    for new_idx in range(1, len(available)):
+        orig_i    = available[new_idx]
+        orig_im1  = available[new_idx - 1]
+        T_new_nm1 = T_i_0[orig_i].dot(np.linalg.inv(T_i_0[orig_im1]))
+        new_chain.setExtrinsicsLastCamToHere(new_idx, sm.Transformation(T_new_nm1))
+
+    return new_chain

@@ -174,8 +174,9 @@ def main():
     targetConfig.printDetails()
     
     print("Initializing camera chain:")
-    chain = kc.CameraChainParameters(parsed.chain_yaml)      
-    chain.printDetails()   
+    chain = kc.CameraChainParameters(parsed.chain_yaml)
+    chain = kc.filter_chain_by_dataset(chain, parsed.folder[0])
+    chain.printDetails()
     camChain = sens.IccCameraChain(chain, targetConfig, parsed)
 
     #create a calibrator instance

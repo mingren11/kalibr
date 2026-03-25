@@ -232,3 +232,107 @@ class IccCalibrator(object):
             chain.writeYaml(resultFile)
         except:
             raise RuntimeError("ERROR: Could not write parameters to file: {0}\n".format(resultFile))
+
+    def saveLooperJson(self, resultFile):
+        """Save calibration results as looper.json.
+
+        Format:
+            base_name: "IMU"
+            camera_calibrations[i].extrinsics.pose_base_in_sensor
+                = pose of IMU (base) in camera_i frame  =  T_cam_imu
+            camera_calibrations[i].intrinsics
+                = calibrated camera intrinsics (same as input, IMU-cam
+                  calibration does not optimise intrinsics)
+        """
+        import json as _json
+
+        def _R_to_quat(R):
+            """Rotation matrix (3x3 numpy) -> (w, x, y, z) unit quaternion."""
+            trace = R[0, 0] + R[1, 1] + R[2, 2]
+            if trace > 0:
+                s = 0.5 / np.sqrt(trace + 1.0)
+                w = 0.25 / s
+                x = (R[2, 1] - R[1, 2]) * s
+                y = (R[0, 2] - R[2, 0]) * s
+                z = (R[1, 0] - R[0, 1]) * s
+            elif R[0, 0] > R[1, 1] and R[0, 0] > R[2, 2]:
+                s = 2.0 * np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+                w = (R[2, 1] - R[1, 2]) / s
+                x = 0.25 * s
+                y = (R[0, 1] + R[1, 0]) / s
+                z = (R[0, 2] + R[2, 0]) / s
+            elif R[1, 1] > R[2, 2]:
+                s = 2.0 * np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+                w = (R[0, 2] - R[2, 0]) / s
+                x = (R[0, 1] + R[1, 0]) / s
+                y = 0.25 * s
+                z = (R[1, 2] + R[2, 1]) / s
+            else:
+                s = 2.0 * np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+                w = (R[1, 0] - R[0, 1]) / s
+                x = (R[0, 2] + R[2, 0]) / s
+                y = (R[1, 2] + R[2, 1]) / s
+                z = 0.25 * s
+            return float(w), float(x), float(y), float(z)
+
+        chain = self.CameraChain.chainConfig
+        nCams = len(self.CameraChain.camList)
+        camera_calibrations = []
+
+        for camNr in range(nCams):
+            # T_cam_imu: pose of IMU expressed in camera frame
+            T_cam_imu = self.CameraChain.getResultTrafoImuToCam(camNr)
+            T_mat = T_cam_imu.T()
+            R = T_mat[:3, :3]
+            t = T_mat[:3, 3]
+            w, x, y, z = _R_to_quat(R)
+
+            # Intrinsics from chain (not re-optimised during IMU-cam calib)
+            camConfig = chain.getCameraParameters(camNr)
+            camera_model, intrinsics = camConfig.getIntrinsics()
+            dist_model, dist_coeff   = camConfig.getDistortion()
+            resolution               = camConfig.getResolution()   # [width, height]
+
+            fx, fy = float(intrinsics[0]), float(intrinsics[1])
+            cx, cy = float(intrinsics[2]), float(intrinsics[3])
+            width, height = int(resolution[0]), int(resolution[1])
+
+            # Map kalibr model names back to the looper convention
+            if camera_model == 'pinhole' and dist_model == 'equidistant':
+                model_out = 'FISHEYE'
+            else:
+                model_out = camera_model.upper()
+
+            # Recover original camera_name if available, else derive from topic
+            cam_data = chain.data.get('cam{0}'.format(camNr), {})
+            cam_name = cam_data.get('camera_name', None)
+            if cam_name is None:
+                topic    = camConfig.getRosTopic()
+                cam_name = topic.strip('/').split('/')[0].upper().replace('-', '_')
+
+            camera_calibrations.append({
+                "camera_name": cam_name,
+                "extrinsics": {
+                    "pose_base_in_sensor": {
+                        "rotation":    {"w": w, "x": x, "y": y, "z": z},
+                        "translation": {"x": float(t[0]), "y": float(t[1]), "z": float(t[2])}
+                    }
+                },
+                "intrinsics": {
+                    "camera_model":    model_out,
+                    "cx":              cx,
+                    "cy":              cy,
+                    "distortion_coef": [float(c) for c in dist_coeff],
+                    "fx":              fx,
+                    "fy":              fy,
+                    "height":          height,
+                    "width":           width
+                }
+            })
+
+        output = {"base_name": "IMU", "camera_calibrations": camera_calibrations}
+        try:
+            with open(resultFile, 'w') as f:
+                _json.dump(output, f, indent=2)
+        except Exception as e:
+            raise RuntimeError("ERROR: Could not write looper.json to {0}: {1}".format(resultFile, e))

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(cp /home/mingren/work/3DVision/Deploy/LooperHub/tros_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_common/$f /home/mingren/work/3DVision/Deploy/LooperHub/tros_ws/src/kalibr/build_standalone_x5/install/lib/python3/dist-packages/kalibr_common/$f)",
+      "Bash(echo \"synced $f\")",
+      "Bash(done)"
+    ]
+  }
+}

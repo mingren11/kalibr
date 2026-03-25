@@ -753,6 +753,8 @@ class CameraChainParameters(ParametersBase):
             cam_params.setIntrinsics(camera_model, intrinsics)
             cam_params.setDistortion(dist_model, dist_coeff)
             cam_params.setResolution(resolution)
+            # Preserve original camera_name for downstream exporters (e.g. looper.json)
+            cam_params.data["camera_name"] = cam_data["camera_name"]
             self.addCameraAtEnd(cam_params)
 
         # Set inter-camera extrinsics: T_cn_cnm1 = T_n_0 * inv(T_(n-1)_0)

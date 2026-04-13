@@ -28,6 +28,21 @@ kalibr_calibrate_cameras --folder /userdata/kalibr_test/dataset --topics cam0 ca
   --bag-freq 5 \
   --dont-show-report
 
+
+kalibr_calibrate_cameras \
+  --folder /userdata/calibr-data/cam \
+  --topics cam0 cam1 cam2 \
+  --models pinhole-equi pinhole-equi pinhole-equi \
+  --target /userdata/calibr/target_aprilgrid6x6_055.yaml
+
+kalibr_calibrate_imu_camera \
+  --folder /userdata/calibr-data/imu_cam \
+  --cams /userdata/calibr-data/cam-camchain.yaml \
+  --imu /userdata/calibr/imu.yaml \
+  --target /userdata/calibr/target_aprilgrid6x6_055.yaml \
+  --bag-freq 5
+
+
 # 相机+IMU 标定
 kalibr_calibrate_imu_camera --folder /userdata/kalibr_test/dataset \
   --cams /userdata/kalibr_test/dataset-camchain.yaml \

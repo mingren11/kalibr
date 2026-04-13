@@ -14,6 +14,42 @@ import os
 # make numpy print prettier
 np.set_printoptions(suppress=True)
 
+
+def summarizeFolderDataset(dataset_root, chain, imu_topics):
+    cam_topics = [chain.getCameraParameters(i).getRosTopic() for i in range(chain.numCameras())]
+    kc.prepare_image_datasets(dataset_root, cam_topics, require_common_timestamps=len(cam_topics) > 1)
+    kc.summarize_prepared_images(dataset_root, cam_topics)
+
+    imu_topic = imu_topics[0] if imu_topics else 'imu0'
+    imu_summary = kc.prepare_imu_dataset(dataset_root, imu_topic)
+    print("[dataset_adapter] imu: {0} samples".format(imu_summary['count']))
+    print("[dataset_adapter] imu: range [{0}, {1}] ns".format(
+        imu_summary['start_ns'], imu_summary['end_ns']))
+    if imu_summary['duplicate_timestamps']:
+        print("[dataset_adapter] WARNING: duplicate imu timestamps: {0}".format(
+            ", ".join(str(ts) for ts in imu_summary['duplicate_timestamps'])))
+    if imu_summary['invalid_lines']:
+        print("[dataset_adapter] WARNING: ignored {0} invalid imu.csv rows".format(
+            imu_summary['invalid_lines']))
+
+    cam_start = None
+    cam_end = None
+    for topic in cam_topics:
+        summary = kc.get_prepared_image_summary(dataset_root, topic)
+        if not summary or summary['start_ns'] is None:
+            continue
+        cam_start = summary['start_ns'] if cam_start is None else min(cam_start, summary['start_ns'])
+        cam_end = summary['end_ns'] if cam_end is None else max(cam_end, summary['end_ns'])
+    if cam_start is not None:
+        print("[dataset_adapter] cameras overall: range [{0}, {1}] ns".format(cam_start, cam_end))
+        overlap_start = max(cam_start, imu_summary['start_ns'])
+        overlap_end = min(cam_end, imu_summary['end_ns'])
+        if overlap_start <= overlap_end:
+            print("[dataset_adapter] camera/imu overlap: [{0}, {1}] ns".format(
+                overlap_start, overlap_end))
+        else:
+            print("[dataset_adapter] WARNING: camera/imu time ranges do not overlap")
+
 def signal_exit(signal, frame):
     print("")
     sm.logWarn("Shutting down! (CTRL+C)")
@@ -68,7 +104,7 @@ def parseArgs():
     
     #data source
     groupData = parser.add_argument_group('Dataset source')
-    groupData.add_argument('--folder', dest='folder', nargs=1, help='Folder dataset: dataset/cam0/, dataset/cam1/, dataset/imu.csv', action=Once, required=True)
+    groupData.add_argument('--folder', dest='folder', nargs=1, help='Folder dataset: dataset/cam0/, dataset/cam1/, dataset/imu.csv; camera folders may contain direct <timestamp>.png files', action=Once, required=True)
     groupData.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the data starting from up to this time [s]')
     groupData.add_argument('--bag-freq', metavar='bag_freq', type=float, help='Frequency to extract features at [hz]')
     groupData.add_argument('--perform-synchronization',  action='store_true', dest='perform_synchronization', \
@@ -176,6 +212,7 @@ def main():
     print("Initializing camera chain:")
     chain = kc.CameraChainParameters(parsed.chain_yaml)
     chain = kc.filter_chain_by_dataset(chain, parsed.folder[0])
+    summarizeFolderDataset(parsed.folder[0], chain, [kc.ImuParameters(path).getRosTopic() for path in parsed.imu_yamls])
     chain.printDetails()
     camChain = sens.IccCameraChain(chain, targetConfig, parsed)
 

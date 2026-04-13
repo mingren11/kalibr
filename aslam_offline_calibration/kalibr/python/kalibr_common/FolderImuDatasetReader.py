@@ -7,6 +7,14 @@ import numpy as np
 import aslam_cv as acv
 
 
+def _parse_timestamp_ns(value):
+    value = str(value).strip()
+    if '.' in value:
+        ts_val = float(value)
+        return int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
+    return int(value)
+
+
 class FolderImuDatasetReaderIterator(object):
     def __init__(self, dataset, indices=None):
         self.dataset = dataset
@@ -60,6 +68,9 @@ class FolderImuDatasetReader(object):
 
         # Parse CSV: timestamp_ns, gx, gy, gz, ax, ay, az
         self.entries = []
+        duplicate_timestamps = set()
+        invalid_lines = 0
+        seen_timestamps = set()
         with open(csv_file, 'r') as f:
             for line in f:
                 line = line.strip()
@@ -68,19 +79,28 @@ class FolderImuDatasetReader(object):
                 parts = [p.strip() for p in line.split(',')]
                 if len(parts) >= 7:
                     try:
-                        ts_val = float(parts[0])
-                        ts_ns = int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
+                        ts_ns = _parse_timestamp_ns(parts[0])
                         gx, gy, gz = float(parts[1]), float(parts[2]), float(parts[3])
                         ax, ay, az = float(parts[4]), float(parts[5]), float(parts[6])
+                        if ts_ns in seen_timestamps:
+                            duplicate_timestamps.add(ts_ns)
+                            continue
+                        seen_timestamps.add(ts_ns)
                         self.entries.append((ts_ns, np.array([gx, gy, gz]), np.array([ax, ay, az])))
                     except (ValueError, IndexError):
+                        invalid_lines += 1
                         continue
+                else:
+                    invalid_lines += 1
 
         if not self.entries:
             raise RuntimeError("No valid IMU entries in {0}".format(csv_file))
 
         self.entries.sort(key=lambda x: x[0])
         self.indices = np.arange(len(self.entries))
+        self.csv_file = csv_file
+        self.duplicate_timestamps = sorted(duplicate_timestamps)
+        self.invalid_lines = invalid_lines
 
         if folder_from_to:
             self.indices = self._truncateFromTime(self.indices, folder_from_to)

@@ -112,6 +112,23 @@ make -j$(nproc)
 make install
 ```
 
+scp -r install root@192.168.137.100:/userdata/calibr
+```
+
+在 X5 上使用：
+
+```bash
+source /userdata/calibr/install/setup_kalibr.sh
+
+kalibr_calibrate_cameras --help
+  kalibr_calibrate_cameras \
+    --folder /userdata/calibr-data/cam \
+    --topics cam0 cam1 cam2 \
+    --models pinhole-equi pinhole-equi pinhole-equi \
+    --target /userdata/calibr/target_aprilgrid6x6_055.yaml
+```
+
+
 **说明**
 
 - 依赖（Boost、Eigen3、OpenCV、SuiteSparse、TBB、Python3）从 `sysroot_docker/usr_x5` 获取，无需在宿主机单独安装

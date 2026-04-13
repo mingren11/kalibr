@@ -8,6 +8,14 @@ import numpy as np
 import aslam_cv as acv
 
 
+def _parse_timestamp_ns(value):
+    value = str(value).strip()
+    if '.' in value:
+        ts_val = float(value)
+        return int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
+    return int(value)
+
+
 class FolderImageDatasetReaderIterator(object):
     def __init__(self, dataset, indices=None):
         self.dataset = dataset
@@ -45,55 +53,57 @@ class FolderImageDatasetReader(object):
           images.csv       <- timestamp_ns,filename  (header optional)
           <images>
     """
-    def __init__(self, folder, csv_path=None, folder_from_to=None, folder_freq=None):
+    def __init__(self, folder, csv_path=None, folder_from_to=None, folder_freq=None, entries=None):
         self.folder = os.path.abspath(folder)
         self.topic = self.folder  # for compatibility with display/logging
         self.bagfile = self.folder  # for compatibility with RsCalibrator
 
-        timestamps_file = os.path.join(self.folder, 'timestamps.txt')
-        data_subdir     = os.path.join(self.folder, 'data')
-
-        if os.path.exists(timestamps_file) and os.path.isdir(data_subdir):
-            # --- New format: timestamps.txt + data/<ts>.png ---
-            self._image_dir = data_subdir
-            self.entries = []
-            with open(timestamps_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    try:
-                        ts_ns = int(line)
-                        self.entries.append((ts_ns, '{0}.png'.format(ts_ns)))
-                    except ValueError:
-                        continue
-            if not self.entries:
-                raise RuntimeError("No valid timestamps in {0}".format(timestamps_file))
-        else:
-            # --- Legacy format: images.csv ---
+        if entries is not None:
             self._image_dir = self.folder
-            csv_file = csv_path or os.path.join(self.folder, 'images.csv')
-            if not os.path.exists(csv_file):
-                raise RuntimeError(
-                    "Neither 'timestamps.txt + data/' nor 'images.csv' found in {0}".format(self.folder))
+            self.entries = list(entries)
+        else:
+            timestamps_file = os.path.join(self.folder, 'timestamps.txt')
+            data_subdir     = os.path.join(self.folder, 'data')
 
-            self.entries = []
-            with open(csv_file, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    parts = line.split(',')
-                    if len(parts) >= 2:
+            if os.path.exists(timestamps_file) and os.path.isdir(data_subdir):
+            # --- New format: timestamps.txt + data/<ts>.png ---
+                self._image_dir = data_subdir
+                self.entries = []
+                with open(timestamps_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
                         try:
-                            ts_val = float(parts[0].strip())
-                            ts_ns = int(ts_val * 1e9) if ts_val < 1e12 else int(ts_val)
-                            fname = parts[1].strip()
-                            self.entries.append((ts_ns, fname))
+                            ts_ns = int(line)
+                            self.entries.append((ts_ns, '{0}.png'.format(ts_ns)))
                         except ValueError:
                             continue
-            if not self.entries:
-                raise RuntimeError("No valid entries in images.csv")
+                if not self.entries:
+                    raise RuntimeError("No valid timestamps in {0}".format(timestamps_file))
+            else:
+            # --- Legacy format: images.csv ---
+                self._image_dir = self.folder
+                csv_file = csv_path or os.path.join(self.folder, 'images.csv')
+                if not os.path.exists(csv_file):
+                    self.entries = self._scan_direct_timestamp_images()
+                else:
+                    self.entries = []
+                    with open(csv_file, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#'):
+                                continue
+                            parts = line.split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    ts_ns = _parse_timestamp_ns(parts[0].strip())
+                                    fname = parts[1].strip()
+                                    self.entries.append((ts_ns, fname))
+                                except ValueError:
+                                    continue
+                if not self.entries:
+                    raise RuntimeError("No valid image entries in {0}".format(self.folder))
 
         # Sort by timestamp
         self.entries.sort(key=lambda x: x[0])
@@ -106,6 +116,22 @@ class FolderImageDatasetReader(object):
         # Subsample by frequency
         if folder_freq and folder_freq > 0:
             self.indices = self._truncateFromFreq(self.indices, folder_freq)
+
+    def _scan_direct_timestamp_images(self):
+        entries = []
+        for fname in sorted(os.listdir(self.folder)):
+            img_path = os.path.join(self.folder, fname)
+            if not os.path.isfile(img_path):
+                continue
+            stem, ext = os.path.splitext(fname)
+            if ext.lower() not in ['.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff']:
+                continue
+            try:
+                ts_ns = _parse_timestamp_ns(stem.strip())
+            except ValueError:
+                continue
+            entries.append((ts_ns, fname))
+        return entries
 
     def _truncateFromTime(self, indices, from_to):
         timestamps = [self.entries[i][0] / 1e9 for i in indices]

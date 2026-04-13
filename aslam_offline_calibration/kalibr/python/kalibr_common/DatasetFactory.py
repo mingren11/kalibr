@@ -2,11 +2,8 @@
 Dataset factory: create image/IMU dataset readers from folder (ROS-independent).
 """
 import os
+from .FolderDatasetAdapter import get_prepared_image_entries, topic_to_folder
 
-def _topic_to_folder(topic):
-    """Extract folder name from topic/path, e.g. /cam0/image_raw -> cam0, or cam0 -> cam0"""
-    parts = [p for p in topic.split('/') if p]
-    return parts[0] if parts else 'cam0'
 
 def create_image_dataset(path, topic, bag_from_to=None, bag_freq=None, perform_synchronization=False):
     """
@@ -18,9 +15,14 @@ def create_image_dataset(path, topic, bag_from_to=None, bag_freq=None, perform_s
         raise RuntimeError(
             "Expected a folder dataset, got: '{0}'. "
             "Only folder-based datasets are supported (no ROS bag).".format(path))
-    folder = os.path.join(path, _topic_to_folder(topic))
+    folder = os.path.join(path, topic_to_folder(topic))
+    prepared_entries = get_prepared_image_entries(path, topic)
     from .FolderImageDatasetReader import FolderImageDatasetReader
-    return FolderImageDatasetReader(folder, folder_from_to=bag_from_to, folder_freq=bag_freq)
+    return FolderImageDatasetReader(
+        folder,
+        folder_from_to=bag_from_to,
+        folder_freq=bag_freq,
+        entries=prepared_entries)
 
 def create_imu_dataset(path, topic, bag_from_to=None, perform_synchronization=False):
     """
@@ -35,7 +37,7 @@ def create_imu_dataset(path, topic, bag_from_to=None, perform_synchronization=Fa
             "Expected a folder dataset, got: '{0}'. "
             "Only folder-based datasets are supported (no ROS bag).".format(path))
     from .FolderImuDatasetReader import FolderImuDatasetReader
-    imu_subfolder = os.path.join(path, _topic_to_folder(topic))
+    imu_subfolder = os.path.join(path, topic_to_folder(topic))
     if os.path.isdir(imu_subfolder):
         return FolderImuDatasetReader(imu_subfolder, folder_from_to=bag_from_to)
     return FolderImuDatasetReader(path, folder_from_to=bag_from_to)

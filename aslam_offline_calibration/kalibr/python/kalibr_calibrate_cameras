@@ -20,6 +20,12 @@ import signal
 
 np.set_printoptions(suppress=True)
 
+
+def summarizeDataset(folder, topics):
+    require_common_timestamps = len(topics) > 1
+    kc.prepare_image_datasets(folder, topics, require_common_timestamps=require_common_timestamps)
+    kc.summarize_prepared_images(folder, topics)
+
 def initDataset(folder, topic, from_to, freq):
     print("\tDataset:          {0}".format(folder))
     print("\tTopic:            {0}".format(topic))
@@ -79,7 +85,7 @@ def parseArgs():
     parser.add_argument('--models', nargs='+', dest='models', help='The camera model {0} to estimate'.format(list(cameraModels.keys())), required=True)
     
     groupSource = parser.add_argument_group('Data source')
-    groupSource.add_argument('--folder', dest='folder', help='Folder dataset: dataset/cam0/, dataset/cam1/ with images.csv per camera', required=True)
+    groupSource.add_argument('--folder', dest='folder', help='Folder dataset: dataset/cam0/, dataset/cam1/ ...; each camera folder may contain direct <timestamp>.png files, images.csv, or timestamps.txt + data/', required=True)
     groupSource.add_argument('--topics', nargs='+', dest='topics', help='Camera folder names (e.g. cam0 cam1)', required=True)
     groupSource.add_argument('--bag-from-to', metavar='bag_from_to', type=float, nargs=2, help='Use the data starting from up to this time [s]')
     groupSource.add_argument('--bag-freq', metavar='bag_freq', type=float, help='Frequency to extract features at [hz]')
@@ -150,6 +156,7 @@ def main():
     signal.signal(signal.SIGINT, signal_exit)
 
     targetConfig = kc.CalibrationTargetParameters(parsed.targetYaml)
+    summarizeDataset(parsed.folder, parsed.topics)
 
     #create camera objects, initialize the intrinsics and extract targets
     cameraList = list()

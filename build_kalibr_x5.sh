@@ -5,13 +5,20 @@ set -euo pipefail
 show_usage() {
   cat <<'EOF'
 Usage:
-  ./build_kalibr_x5.sh <install_dir> [build_dir]
+  ./build_kalibr_x5.sh [--clean] <install_dir> [build_dir]
 
 Example:
   ./build_kalibr_x5.sh /LooperHub/tros_ws/install/kalibr
+  ./build_kalibr_x5.sh --clean /LooperHub/tros_ws/install/kalibr
   ./build_kalibr_x5.sh /userdata/kalibr_install build_standalone_x5
 EOF
 }
+
+DO_CLEAN=0
+if [[ "${1:-}" == "--clean" ]]; then
+  DO_CLEAN=1
+  shift
+fi
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
   show_usage
@@ -56,14 +63,33 @@ ln -s "${SYSROOT_DIR}/usr_x5" "${SYSROOT_DIR}/usr"
 
 export PKG_CONFIG_PATH="${SYSROOT_DIR}/usr/lib/aarch64-linux-gnu/pkgconfig"
 
-rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+if [[ ${DO_CLEAN} -eq 1 ]]; then
+  rm -rf "${BUILD_DIR}"
+  mkdir -p "${BUILD_DIR}"
+fi
 
 echo "Building kalibr for X5"
 echo "  Source:  ${KALIBR_SRC}"
 echo "  Build:   ${BUILD_DIR}"
 echo "  Install: ${INSTALL_DIR}"
 echo "  Sysroot: ${SYSROOT_DIR}/usr -> ${SYSROOT_DIR}/usr_x5"
+if [[ ${DO_CLEAN} -eq 1 ]]; then
+  echo "  Clean:   enabled"
+fi
+
+mkdir -p "${INSTALL_DIR}" 2>/dev/null || {
+  echo "Error: cannot create install directory: ${INSTALL_DIR}"
+  echo "Check that the parent directory exists and is writable by the current user."
+  exit 1
+}
+
+if [[ ! -w "${INSTALL_DIR}" ]]; then
+  echo "Error: install directory is not writable: ${INSTALL_DIR}"
+  echo "If this path was created by root before, fix it in the Docker container:"
+  echo "  sudo chown -R \$(id -u):\$(id -g) \"${INSTALL_DIR}\""
+  exit 1
+fi
 
 cmake -S "${KALIBR_SRC}" -B "${BUILD_DIR}" \
   -DCMAKE_TOOLCHAIN_FILE="${TROS_WS}/robot_dev_config/aarch64_toolchainfile.cmake" \

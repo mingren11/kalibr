@@ -9,6 +9,12 @@
 
 ## 1. 编译
 
+一键编译：
+```bash
+cd /LooperHub/tros_ws/src/kalibr
+sudo ./build_kalibr_x5.sh /LooperHub/tros_ws/install/kalib
+```
+
 在交叉编译 Docker 中执行：
 
 ```bash

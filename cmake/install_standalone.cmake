@@ -42,6 +42,24 @@ install(DIRECTORY ${_KALIBR_PY}/exporters/
   PATTERN "__pycache__" EXCLUDE
 )
 
+# Helper scripts shipped with the standalone install.
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/looper_format.py
+  DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
+
+# Default config files shipped with the standalone install.
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/imu.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/target.yaml
+  DESTINATION .
+)
+
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/run_kalibr.sh
+  DESTINATION .
+)
+
 # setup_kalibr.sh for install dir (PYTHONPATH = lib + lib/python3/dist-packages, PATH = bin)
 set(_SETUP_SCRIPT "#!/bin/bash
 # Source this to use kalibr from the install directory.
